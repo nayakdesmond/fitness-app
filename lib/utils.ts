@@ -1,3 +1,4 @@
+// Fixed: Handle optional date parameters
 export function getDateString(date?: Date): string {
   const d = date || new Date()
   return d.toISOString().split('T')[0]
