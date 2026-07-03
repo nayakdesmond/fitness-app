@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { getDateString } from '@/lib/utils'
@@ -38,7 +38,7 @@ interface WorkoutSession {
   sets: WorkoutSet[]
 }
 
-export default function Workouts() {
+function WorkoutsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
@@ -63,7 +63,6 @@ export default function Workouts() {
         
         setUser(authUser)
 
-        // Load templates with exercises
         const { data: templatesData } = await client
           .from('workout_templates')
           .select(`
@@ -84,7 +83,6 @@ export default function Workouts() {
           setTemplates(templatesData as any)
         }
 
-        // Load session from query param if exists
         const sessionId = searchParams.get('session')
         if (sessionId) {
           const { data: sessionData } = await client
@@ -199,7 +197,6 @@ export default function Workouts() {
       const client = createClient()
       const today = getDateString()
 
-      // Check if session exists for today
       const { data: existingSession } = await client
         .from('workout_sessions')
         .select('id')
@@ -236,6 +233,9 @@ export default function Workouts() {
               exercise_id: ex.id,
               exercise_name: ex.name,
               set_number: 1,
+              reps: undefined,
+              weight: undefined,
+              rpe: undefined
             }))
           })
         }
@@ -300,7 +300,6 @@ export default function Workouts() {
     return <div className="text-center py-8">Loading...</div>
   }
 
-  // Active workout view
   if (activeSession) {
     return (
       <div className="max-w-2xl mx-auto px-4 space-y-4">
@@ -378,12 +377,10 @@ export default function Workouts() {
     )
   }
 
-  // Templates list view
   return (
     <div className="max-w-2xl mx-auto px-4 space-y-4">
       <h1 className="text-2xl font-bold">Workouts</h1>
 
-      {/* Create Template Form */}
       {showNewTemplate && (
         <div className="bg-slate-900 rounded-lg p-4 border border-slate-800 space-y-3">
           <input
@@ -419,14 +416,12 @@ export default function Workouts() {
         </button>
       )}
 
-      {/* Templates List */}
       <div className="space-y-3">
         {templates.map((template) => (
           <div key={template.id} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
             <h3 className="font-semibold mb-2">{template.name}</h3>
             <p className="text-sm text-slate-400 mb-3">{template.exercises.length} exercises</p>
 
-            {/* Add Exercise Form */}
             {selectedTemplate === template.id && (
               <div className="bg-slate-800 rounded p-3 mb-3 space-y-2">
                 <input
@@ -453,7 +448,6 @@ export default function Workouts() {
               </div>
             )}
 
-            {/* Exercises List */}
             {template.exercises.length > 0 && (
               <div className="space-y-1 mb-3">
                 {template.exercises.map((ex) => (
@@ -464,7 +458,6 @@ export default function Workouts() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-2">
               <button
                 onClick={() => startWorkout(template.id, template.name)}
@@ -485,5 +478,13 @@ export default function Workouts() {
         ))}
       </div>
     </div>
+  )
+}
+
+export default function Workouts() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+      <WorkoutsContent />
+    </Suspense>
   )
 }
