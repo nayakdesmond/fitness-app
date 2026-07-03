@@ -134,7 +134,7 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold mb-1">Today</h1>
-        <p className="text-slate-400">{formatDate(new Date())}</p>
+<p className="text-slate-400">{formatDate(getDateString(new Date()))}</p>
       </div>
 
       {/* Today's Workout */}
