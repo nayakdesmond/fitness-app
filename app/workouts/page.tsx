@@ -38,6 +38,19 @@ interface WorkoutSession {
   sets: WorkoutSet[]
 }
 
+interface PrevSet {
+  set_number: number
+  reps?: number
+  weight?: number
+  rpe?: number
+}
+
+function formatRestTime(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 function WorkoutsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -49,6 +62,79 @@ function WorkoutsContent() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+
+  // Progressive overload: previous session sets, keyed by exercise_id
+  const [prevSets, setPrevSets] = useState<Record<string, PrevSet[]>>({})
+  const [prevDate, setPrevDate] = useState<string | null>(null)
+
+  // Rest timer
+  const [restSeconds, setRestSeconds] = useState<number | null>(null)
+  const [restDone, setRestDone] = useState(false)
+
+  useEffect(() => {
+    if (restSeconds === null) return
+    if (restSeconds <= 0) {
+      setRestDone(true)
+      setRestSeconds(null)
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate?.([200, 100, 200])
+      }
+      return
+    }
+    const t = setTimeout(() => {
+      setRestSeconds(s => (s !== null ? s - 1 : null))
+    }, 1000)
+    return () => clearTimeout(t)
+  }, [restSeconds])
+
+  const startRest = (seconds: number) => {
+    setRestDone(false)
+    setRestSeconds(seconds)
+  }
+
+  const loadPreviousSets = async (client: any, userId: string, templateId: string, beforeDate: string) => {
+    try {
+      const { data: prevSession } = await client
+        .from('workout_sessions')
+        .select('id, date')
+        .eq('user_id', userId)
+        .eq('template_id', templateId)
+        .lt('date', beforeDate)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (prevSession?.id) {
+        setPrevDate(prevSession.date)
+        const { data: sets } = await client
+          .from('workout_sets')
+          .select('exercise_id, set_number, reps, weight, rpe')
+          .eq('workout_session_id', prevSession.id)
+          .order('set_number')
+
+        if (sets) {
+          const grouped: Record<string, PrevSet[]> = {}
+          for (const s of sets) {
+            if (!grouped[s.exercise_id]) grouped[s.exercise_id] = []
+            grouped[s.exercise_id].push({
+              set_number: s.set_number,
+              reps: s.reps,
+              weight: s.weight,
+              rpe: s.rpe
+            })
+          }
+          setPrevSets(grouped)
+        }
+      } else {
+        setPrevSets({})
+        setPrevDate(null)
+      }
+    } catch {
+      // No previous session found — that's fine
+      setPrevSets({})
+      setPrevDate(null)
+    }
+  }
 
   useEffect(() => {
     const loadWorkouts = async () => {
@@ -125,6 +211,7 @@ function WorkoutsContent() {
                 notes: s.notes
               })) || []
             })
+            await loadPreviousSets(client, authUser.id, sessionData.template_id, sessionData.date)
           }
         }
       } catch (error) {
@@ -235,6 +322,7 @@ function WorkoutsContent() {
               set_number: 1,
             }))
           })
+          await loadPreviousSets(client, user.id, templateId, today)
         }
       }
     } catch (error) {
@@ -287,6 +375,8 @@ function WorkoutsContent() {
         .eq('id', activeSession.id)
 
       setActiveSession(null)
+      setRestSeconds(null)
+      setRestDone(false)
       router.push('/')
     } catch (error) {
       console.error('Error completing workout:', error)
@@ -297,10 +387,10 @@ function WorkoutsContent() {
     return <div className="text-center py-8 text-slate-400">Loading...</div>
   }
 
-  // Active workout view — redesigned for clarity
+  // Active workout view
   if (activeSession) {
     return (
-      <div className="max-w-2xl mx-auto px-4 pb-24 space-y-5">
+      <div className="max-w-2xl mx-auto px-4 pb-40 space-y-5">
         <div className="flex justify-between items-center pt-2">
           <div>
             <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1">
@@ -318,71 +408,91 @@ function WorkoutsContent() {
         </div>
 
         <div className="space-y-4">
-          {templates.find(t => t.id === activeSession.template_id)?.exercises.map((exercise) => (
-            <div key={exercise.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-              <h3 className="font-bold text-lg text-white mb-4">{exercise.name}</h3>
-              <div className="space-y-3">
-                {[1, 2, 3].map((setNum) => (
-                  <div key={setNum} className="flex items-center gap-3">
-                    <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700">
-                      <span className="text-sm font-bold text-slate-300">{setNum}</span>
-                    </div>
+          {templates.find(t => t.id === activeSession.template_id)?.exercises.map((exercise) => {
+            const lastSets = prevSets[exercise.id]
+            return (
+              <div key={exercise.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+                <h3 className="font-bold text-lg text-white">{exercise.name}</h3>
 
-                    <div className="flex-1 grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                          Reps
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          placeholder="0"
-                          defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.reps || ''}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val) saveSet(exercise.id, setNum, { reps: parseInt(val) })
-                          }}
-                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
+                {/* Progressive overload hint */}
+                {lastSets && lastSets.length > 0 ? (
+                  <p className="text-sm text-blue-300 mt-1 mb-4">
+                    Last time:{' '}
+                    <span className="font-semibold">
+                      {lastSets
+                        .filter(s => s.reps || s.weight)
+                        .map(s => `${s.weight ?? '–'} lb × ${s.reps ?? '–'}`)
+                        .join(' · ') || 'logged, no data'}
+                    </span>
+                    {' '}— try to beat it 💪
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500 mt-1 mb-4">First time logging this — set your baseline</p>
+                )}
+
+                <div className="space-y-3">
+                  {[1, 2, 3].map((setNum) => (
+                    <div key={setNum} className="flex items-center gap-3">
+                      <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700">
+                        <span className="text-sm font-bold text-slate-300">{setNum}</span>
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                          Lbs
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          placeholder="0"
-                          defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.weight || ''}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val) saveSet(exercise.id, setNum, { weight: parseFloat(val) })
-                          }}
-                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                          RPE
-                        </label>
-                        <select
-                          defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.rpe || ''}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            if (val) saveSet(exercise.id, setNum, { rpe: parseInt(val) })
-                          }}
-                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-1 py-2.5 text-center text-base font-bold text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="">-</option>
-                          {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
+
+                      <div className="flex-1 grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                            Reps
+                          </label>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            placeholder={String(lastSets?.find(s => s.set_number === setNum)?.reps ?? 0)}
+                            defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.reps || ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              if (val) saveSet(exercise.id, setNum, { reps: parseInt(val) })
+                            }}
+                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                            Lbs
+                          </label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder={String(lastSets?.find(s => s.set_number === setNum)?.weight ?? 0)}
+                            defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.weight || ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              if (val) saveSet(exercise.id, setNum, { weight: parseFloat(val) })
+                            }}
+                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                            RPE
+                          </label>
+                          <select
+                            defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.rpe || ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              if (val) saveSet(exercise.id, setNum, { rpe: parseInt(val) })
+                            }}
+                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-1 py-2.5 text-center text-base font-bold text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="">-</option>
+                            {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <button
@@ -391,6 +501,44 @@ function WorkoutsContent() {
         >
           ✓ Complete Workout
         </button>
+
+        {/* Rest timer bar — fixed above bottom nav */}
+        <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2">
+          <div className="max-w-2xl mx-auto">
+            {restSeconds !== null ? (
+              <div className="flex items-center justify-between bg-blue-600 rounded-xl px-4 py-3 shadow-lg">
+                <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">Rest</span>
+                <span className="text-2xl font-bold text-white tabular-nums">{formatRestTime(restSeconds)}</span>
+                <button
+                  onClick={() => setRestSeconds(null)}
+                  className="text-sm font-semibold text-blue-100 hover:text-white transition"
+                >
+                  Skip
+                </button>
+              </div>
+            ) : restDone ? (
+              <button
+                onClick={() => setRestDone(false)}
+                className="w-full bg-green-600 rounded-xl px-4 py-3 shadow-lg text-white font-bold"
+              >
+                ✓ Rest done — go!
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 bg-slate-900/95 backdrop-blur rounded-xl px-3 py-2.5 border border-slate-700 shadow-lg">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Rest</span>
+                {[60, 90, 120, 180].map(secs => (
+                  <button
+                    key={secs}
+                    onClick={() => startRest(secs)}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg py-1.5 text-sm font-bold text-white transition"
+                  >
+                    {formatRestTime(secs)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     )
   }

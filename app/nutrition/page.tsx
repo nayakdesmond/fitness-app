@@ -31,7 +31,7 @@ export default function Nutrition() {
       try {
         const client = createClient()
         const { data: { user: authUser } } = await client.auth.getUser()
-        
+
         if (!authUser) {
           router.push('/auth/login')
           return
@@ -39,7 +39,6 @@ export default function Nutrition() {
 
         setUser(authUser)
 
-        // Load settings
         const { data: settingsData } = await client
           .from('user_settings')
           .select('daily_calorie_target, daily_protein_target')
@@ -50,7 +49,6 @@ export default function Nutrition() {
           setSettings(settingsData)
         }
 
-        // Load logs
         const { data } = await client
           .from('nutrition_logs')
           .select('*')
@@ -99,41 +97,47 @@ export default function Nutrition() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>
+    return <div className="text-center py-8 text-slate-400">Loading...</div>
   }
 
   const todayLog = logs.find(l => l.date === getDateString())
 
   return (
-    <div className="max-w-2xl mx-auto px-4 space-y-4">
-      <h1 className="text-2xl font-bold">Nutrition</h1>
+    <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
+      <h1 className="text-2xl font-bold text-white pt-2">Nutrition</h1>
 
-      {/* Today's Log */}
+      {/* Today's Progress */}
       {todayLog && settings && (
-        <div className="bg-slate-900 rounded-lg p-4 border border-slate-800">
-          <h2 className="font-semibold mb-4">Today</h2>
-          <div className="space-y-4">
+        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">Today's Progress</p>
+          <div className="space-y-5">
             <div>
-              <div className="flex justify-between mb-2">
-                <p className="text-sm text-slate-400">Calories</p>
-                <p className="text-sm font-semibold">{todayLog.calories} / {settings.daily_calorie_target}</p>
+              <div className="flex justify-between items-baseline mb-2">
+                <p className="text-sm font-semibold text-slate-300">Calories</p>
+                <p className="text-lg font-bold text-white">
+                  {todayLog.calories}
+                  <span className="text-sm font-semibold text-slate-400"> / {settings.daily_calorie_target}</span>
+                </p>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-2">
+              <div className="w-full bg-slate-800 rounded-full h-2.5">
                 <div
-                  className="bg-blue-600 h-2 rounded-full"
+                  className="bg-blue-500 h-2.5 rounded-full transition-all"
                   style={{ width: `${Math.min((todayLog.calories / settings.daily_calorie_target) * 100, 100)}%` }}
                 />
               </div>
             </div>
 
             <div>
-              <div className="flex justify-between mb-2">
-                <p className="text-sm text-slate-400">Protein</p>
-                <p className="text-sm font-semibold">{todayLog.protein} / {settings.daily_protein_target}g</p>
+              <div className="flex justify-between items-baseline mb-2">
+                <p className="text-sm font-semibold text-slate-300">Protein</p>
+                <p className="text-lg font-bold text-white">
+                  {todayLog.protein}
+                  <span className="text-sm font-semibold text-slate-400"> / {settings.daily_protein_target}g</span>
+                </p>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-2">
+              <div className="w-full bg-slate-800 rounded-full h-2.5">
                 <div
-                  className="bg-red-600 h-2 rounded-full"
+                  className="bg-red-500 h-2.5 rounded-full transition-all"
                   style={{ width: `${Math.min((todayLog.protein / settings.daily_protein_target) * 100, 100)}%` }}
                 />
               </div>
@@ -143,38 +147,41 @@ export default function Nutrition() {
       )}
 
       {/* Input Form */}
-      <div className="bg-slate-900 rounded-lg p-4 border border-slate-800">
-        <h2 className="font-semibold mb-4">Log Nutrition</h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-2">
-              Calories
-            </label>
-            <input
-              type="number"
-              value={calories}
-              onChange={(e) => setCalories(e.target.value)}
-              placeholder="0"
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-2">
-              Protein (g)
-            </label>
-            <input
-              type="number"
-              value={protein}
-              onChange={(e) => setProtein(e.target.value)}
-              placeholder="0"
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
-            />
+      <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">Log Today's Totals</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+                Calories
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={calories}
+                onChange={(e) => setCalories(e.target.value)}
+                placeholder="0"
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+                Protein (g)
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={protein}
+                onChange={(e) => setProtein(e.target.value)}
+                placeholder="0"
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition"
           >
             Log
           </button>
@@ -183,16 +190,22 @@ export default function Nutrition() {
 
       {/* History */}
       <div className="space-y-3">
-        <h2 className="font-semibold">History</h2>
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide pt-2">History</p>
         {logs.length === 0 ? (
-          <p className="text-slate-400 text-center py-8">No logs yet</p>
+          <p className="text-slate-400 text-center py-8">No logs yet — log today's totals above</p>
         ) : (
           logs.map((log) => (
-            <div key={log.id} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
-              <p className="text-sm text-slate-400 mb-2">{formatDate(log.date)}</p>
-              <div className="flex justify-between text-sm">
-                <span>Calories: {log.calories}</span>
-                <span>Protein: {log.protein}g</span>
+            <div key={log.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800 flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-400">{formatDate(log.date)}</p>
+              <div className="flex gap-6">
+                <div className="text-right">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Cals</p>
+                  <p className="text-lg font-bold text-white">{log.calories}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Protein</p>
+                  <p className="text-lg font-bold text-white">{log.protein}<span className="text-sm text-slate-400">g</span></p>
+                </div>
               </div>
             </div>
           ))
