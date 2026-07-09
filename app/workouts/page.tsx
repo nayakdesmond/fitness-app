@@ -55,12 +55,12 @@ function WorkoutsContent() {
       try {
         const client = createClient()
         const { data: { user: authUser } } = await client.auth.getUser()
-        
+
         if (!authUser) {
           router.push('/auth/login')
           return
         }
-        
+
         setUser(authUser)
 
         const { data: templatesData } = await client
@@ -177,7 +177,7 @@ function WorkoutsContent() {
         .select()
 
       if (exerciseData?.[0]) {
-        const updatedTemplates = templates.map(t => 
+        const updatedTemplates = templates.map(t =>
           t.id === selectedTemplate
             ? { ...t, exercises: [...t.exercises, exerciseData[0] as any] }
             : t
@@ -206,7 +206,7 @@ function WorkoutsContent() {
         .single()
 
       let sessionId = existingSession?.id
-      
+
       if (!sessionId) {
         const { data: newSession } = await client
           .from('workout_sessions')
@@ -233,9 +233,6 @@ function WorkoutsContent() {
               exercise_id: ex.id,
               exercise_name: ex.name,
               set_number: 1,
-              reps: undefined,
-              weight: undefined,
-              rpe: undefined
             }))
           })
         }
@@ -297,17 +294,24 @@ function WorkoutsContent() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>
+    return <div className="text-center py-8 text-slate-400">Loading...</div>
   }
 
+  // Active workout view — redesigned for clarity
   if (activeSession) {
     return (
-      <div className="max-w-2xl mx-auto px-4 space-y-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">{activeSession.template_name}</h1>
+      <div className="max-w-2xl mx-auto px-4 pb-24 space-y-5">
+        <div className="flex justify-between items-center pt-2">
+          <div>
+            <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1">
+              In Progress
+            </p>
+            <h1 className="text-2xl font-bold text-white">{activeSession.template_name}</h1>
+          </div>
           <button
             onClick={() => setActiveSession(null)}
-            className="text-slate-400 hover:text-slate-200"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition text-lg"
+            aria-label="Close workout"
           >
             ✕
           </button>
@@ -315,50 +319,64 @@ function WorkoutsContent() {
 
         <div className="space-y-4">
           {templates.find(t => t.id === activeSession.template_id)?.exercises.map((exercise) => (
-            <div key={exercise.id} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
-              <h3 className="font-semibold mb-3">{exercise.name}</h3>
-              <div className="space-y-2">
+            <div key={exercise.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+              <h3 className="font-bold text-lg text-white mb-4">{exercise.name}</h3>
+              <div className="space-y-3">
                 {[1, 2, 3].map((setNum) => (
-                  <div key={setNum} className="grid grid-cols-4 gap-2 text-sm">
-                    <div>
-                      <label className="text-xs text-slate-400">Set {setNum}</label>
-                      <input
-                        type="number"
-                        placeholder="reps"
-                        defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.reps || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val) saveSet(exercise.id, setNum, { reps: parseInt(val) })
-                        }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
-                      />
+                  <div key={setNum} className="flex items-center gap-3">
+                    <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700">
+                      <span className="text-sm font-bold text-slate-300">{setNum}</span>
                     </div>
-                    <div>
-                      <label className="text-xs text-slate-400">Weight</label>
-                      <input
-                        type="number"
-                        placeholder="lbs"
-                        defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.weight || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val) saveSet(exercise.id, setNum, { weight: parseFloat(val) })
-                        }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400">RPE</label>
-                      <select
-                        defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.rpe || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val) saveSet(exercise.id, setNum, { rpe: parseInt(val) })
-                        }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white text-sm"
-                      >
-                        <option value="">-</option>
-                        {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-                      </select>
+
+                    <div className="flex-1 grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                          Reps
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="0"
+                          defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.reps || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val) saveSet(exercise.id, setNum, { reps: parseInt(val) })
+                          }}
+                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                          Lbs
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="0"
+                          defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.weight || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val) saveSet(exercise.id, setNum, { weight: parseFloat(val) })
+                          }}
+                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                          RPE
+                        </label>
+                        <select
+                          defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.rpe || ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            if (val) saveSet(exercise.id, setNum, { rpe: parseInt(val) })
+                          }}
+                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-1 py-2.5 text-center text-base font-bold text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">-</option>
+                          {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -369,7 +387,7 @@ function WorkoutsContent() {
 
         <button
           onClick={completeWorkout}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition"
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-base py-3.5 rounded-xl transition shadow-lg shadow-green-900/30"
         >
           ✓ Complete Workout
         </button>
@@ -377,29 +395,30 @@ function WorkoutsContent() {
     )
   }
 
+  // Templates list view
   return (
-    <div className="max-w-2xl mx-auto px-4 space-y-4">
-      <h1 className="text-2xl font-bold">Workouts</h1>
+    <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
+      <h1 className="text-2xl font-bold text-white pt-2">Workouts</h1>
 
       {showNewTemplate && (
-        <div className="bg-slate-900 rounded-lg p-4 border border-slate-800 space-y-3">
+        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-3">
           <input
             type="text"
             value={newTemplateName}
             onChange={(e) => setNewTemplateName(e.target.value)}
             placeholder="Template name (e.g., Full Body A)"
-            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
           />
           <div className="flex gap-2">
             <button
               onClick={createTemplate}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition"
             >
               Create
             </button>
             <button
               onClick={() => setShowNewTemplate(false)}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2 rounded-lg transition"
+              className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-lg transition"
             >
               Cancel
             </button>
@@ -410,7 +429,7 @@ function WorkoutsContent() {
       {!showNewTemplate && (
         <button
           onClick={() => setShowNewTemplate(true)}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-lg transition"
+          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3.5 rounded-xl transition border border-slate-700"
         >
           + New Template
         </button>
@@ -418,29 +437,29 @@ function WorkoutsContent() {
 
       <div className="space-y-3">
         {templates.map((template) => (
-          <div key={template.id} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
-            <h3 className="font-semibold mb-2">{template.name}</h3>
+          <div key={template.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+            <h3 className="font-bold text-lg text-white mb-1">{template.name}</h3>
             <p className="text-sm text-slate-400 mb-3">{template.exercises.length} exercises</p>
 
             {selectedTemplate === template.id && (
-              <div className="bg-slate-800 rounded p-3 mb-3 space-y-2">
+              <div className="bg-slate-800 rounded-xl p-3 mb-3 space-y-2">
                 <input
                   type="text"
                   value={newExerciseName}
                   onChange={(e) => setNewExerciseName(e.target.value)}
                   placeholder="Exercise name"
-                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1 text-white placeholder-slate-500 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm focus:border-blue-500 focus:outline-none"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={addExercise}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 rounded text-sm transition"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-sm transition"
                   >
                     Add
                   </button>
                   <button
                     onClick={() => setSelectedTemplate(null)}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1 rounded text-sm transition"
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-lg text-sm transition"
                   >
                     Done
                   </button>
@@ -449,10 +468,11 @@ function WorkoutsContent() {
             )}
 
             {template.exercises.length > 0 && (
-              <div className="space-y-1 mb-3">
+              <div className="space-y-1.5 mb-4">
                 {template.exercises.map((ex) => (
-                  <div key={ex.id} className="text-sm text-slate-400">
-                    • {ex.name}
+                  <div key={ex.id} className="text-sm text-slate-300 flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-slate-500" />
+                    {ex.name}
                   </div>
                 ))}
               </div>
@@ -461,14 +481,14 @@ function WorkoutsContent() {
             <div className="flex gap-2">
               <button
                 onClick={() => startWorkout(template.id, template.name)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-sm transition"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition"
               >
                 Start
               </button>
               {selectedTemplate !== template.id && (
                 <button
                   onClick={() => setSelectedTemplate(template.id)}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2 rounded-lg text-sm transition"
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-lg text-sm transition border border-slate-700"
                 >
                   Edit
                 </button>
@@ -483,7 +503,7 @@ function WorkoutsContent() {
 
 export default function Workouts() {
   return (
-    <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+    <Suspense fallback={<div className="text-center py-8 text-slate-400">Loading...</div>}>
       <WorkoutsContent />
     </Suspense>
   )
