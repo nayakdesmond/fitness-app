@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { formatDate, formatDateFull, getDateString } from '@/lib/utils'
+import { formatDate, formatDateFull, getDateString, type WeightUnit } from '@/lib/utils'
+import { useToast } from '@/components/Toast'
 
 interface UserSettings {
   daily_calorie_target: number
   daily_protein_target: number
   starting_weight: number
   goal_weight?: number
+  weight_unit?: WeightUnit
 }
 
 interface TodayWorkout {
@@ -56,7 +58,7 @@ function WeightSparkline({ weights }: { weights: number[] }) {
 
 export default function Dashboard() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const toast = useToast()
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [todayWorkout, setTodayWorkout] = useState<TodayWorkout | null>(null)
   const [todayNutrition, setTodayNutrition] = useState<NutritionLog>({ calories: 0, protein: 0 })
@@ -74,8 +76,6 @@ export default function Dashboard() {
           router.push('/auth/login')
           return
         }
-
-        setUser(authUser)
 
         // Load user settings
         const { data: settingsData } = await client
@@ -106,7 +106,7 @@ export default function Dashboard() {
           setTodayWorkout({
             id: sessionsData.id,
             template_id: sessionsData.template_id,
-            name: (sessionsData as any).workout_templates?.name || 'Workout',
+            name: (sessionsData.workout_templates as unknown as { name?: string } | null)?.name || 'Workout',
             completed: sessionsData.completed
           })
         }
@@ -141,17 +141,20 @@ export default function Dashboard() {
 
       } catch (error) {
         console.error('Error loading dashboard:', error)
+        toast('error', 'Could not load your dashboard.')
       } finally {
         setLoading(false)
       }
     }
 
     loadDashboard()
-  }, [router])
+  }, [router, toast])
 
   if (loading) {
     return <div className="text-center py-8 text-slate-400">Loading...</div>
   }
+
+  const unit = settings?.weight_unit || 'lbs'
 
   const calorieProgress = settings
     ? Math.round((todayNutrition.calories / settings.daily_calorie_target) * 100)
@@ -179,10 +182,10 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold text-white">Today</h1>
       </div>
 
-      {/* Today's Workout */}
+      {/* Today&apos;s Workout */}
       <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-3">
-          Today's Workout
+          Today&apos;s Workout
         </p>
         {todayWorkout ? (
           <div className="space-y-3">
@@ -220,10 +223,10 @@ export default function Dashboard() {
             </p>
             <p className="text-3xl font-bold text-white">
               {latestWeight}
-              <span className="text-sm font-semibold text-slate-400 ml-1">lbs</span>
+              <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>
             </p>
             {startingWeight > 0 && (
-              <p className="text-xs text-slate-400 mt-1">from {startingWeight} lbs</p>
+              <p className="text-xs text-slate-400 mt-1">from {startingWeight} {unit}</p>
             )}
           </div>
           <div className="bg-gradient-to-br from-green-900/50 to-slate-900 rounded-2xl p-4 border border-green-800/40">
@@ -232,7 +235,7 @@ export default function Dashboard() {
             </p>
             <p className="text-3xl font-bold text-green-400">
               {weightLost !== null ? Math.abs(weightLost).toFixed(1) : '—'}
-              <span className="text-sm font-semibold text-green-300/70 ml-1">lbs</span>
+              <span className="text-sm font-semibold text-green-300/70 ml-1">{unit}</span>
             </p>
             <p className="text-xs text-green-300/70 mt-1">
               {weightLost !== null && weightLost >= 0 ? 'lost' : 'gained'}
@@ -246,7 +249,7 @@ export default function Dashboard() {
       {settings && (
         <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">
-            Today's Nutrition
+            Today&apos;s Nutrition
           </p>
           <div className="space-y-5">
             <div>
@@ -302,10 +305,10 @@ export default function Dashboard() {
 
           <div className="flex justify-between mt-2">
             <p className="text-sm font-bold text-slate-300">
-              {weeklyWeights[0].weight} <span className="text-xs font-semibold text-slate-500">lbs</span>
+              {weeklyWeights[0].weight} <span className="text-xs font-semibold text-slate-500">{unit}</span>
             </p>
             <p className="text-sm font-bold text-green-400">
-              {weeklyWeights[weeklyWeights.length - 1].weight} <span className="text-xs font-semibold text-green-500/70">lbs</span>
+              {weeklyWeights[weeklyWeights.length - 1].weight} <span className="text-xs font-semibold text-green-500/70">{unit}</span>
             </p>
           </div>
         </div>

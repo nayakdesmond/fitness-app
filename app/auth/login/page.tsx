@@ -29,8 +29,8 @@ export default function Login() {
       } else {
         router.push("/")
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -77,7 +77,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-slate-400 mt-6">
-          Don't have an account? <Link href="/auth/signup" className="text-blue-400 hover:underline">Sign up</Link>
+          Don&apos;t have an account? <Link href="/auth/signup" className="text-blue-400 hover:underline">Sign up</Link>
         </p>
       </div>
     </div>

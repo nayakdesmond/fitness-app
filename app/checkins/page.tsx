@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
-import { getWeekStartDateString, formatDate } from '@/lib/utils'
+import { getWeekStartDateString, formatDate, type WeightUnit } from '@/lib/utils'
+import { useToast } from '@/components/Toast'
 
 interface WeeklyCheckin {
   id: string
@@ -16,10 +18,12 @@ interface WeeklyCheckin {
 
 interface UserSettings {
   starting_weight: number
+  weight_unit?: WeightUnit
 }
 
 export default function Checkins() {
   const router = useRouter()
+  const toast = useToast()
   const [checkins, setCheckins] = useState<WeeklyCheckin[]>([])
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -28,7 +32,7 @@ export default function Checkins() {
   const [sleepQuality, setSleepQuality] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     const loadCheckins = async () => {
@@ -45,7 +49,7 @@ export default function Checkins() {
 
         const { data: settingsData } = await client
           .from('user_settings')
-          .select('starting_weight')
+          .select('starting_weight, weight_unit')
           .eq('id', authUser.id)
           .single()
 
@@ -62,13 +66,14 @@ export default function Checkins() {
         setCheckins(data || [])
       } catch (error) {
         console.error('Error loading checkins:', error)
+        toast('error', 'Could not load your check-ins.')
       } finally {
         setLoading(false)
       }
     }
 
     loadCheckins()
-  }, [router])
+  }, [router, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,7 +83,7 @@ export default function Checkins() {
       const client = createClient()
       const weekStart = getWeekStartDateString()
 
-      const { data } = await client
+      const { data, error } = await client
         .from('weekly_checkins')
         .upsert([{
           user_id: user.id,
@@ -90,6 +95,7 @@ export default function Checkins() {
         }])
         .select()
 
+      if (error) throw error
       if (data) {
         const updatedCheckins = checkins.filter(c => c.week_start_date !== weekStart)
         setCheckins([data[0], ...updatedCheckins])
@@ -101,12 +107,15 @@ export default function Checkins() {
       }
     } catch (error) {
       console.error('Error saving checkin:', error)
+      toast('error', 'Could not save your check-in.')
     }
   }
 
   if (loading) {
     return <div className="text-center py-8 text-slate-400">Loading...</div>
   }
+
+  const unit = settings?.weight_unit || 'lbs'
 
   const totalLost = settings && checkins.length > 0
     ? (settings.starting_weight - checkins[0].weight).toFixed(1)
@@ -124,7 +133,7 @@ export default function Checkins() {
             <p className="text-3xl font-bold text-white">
               {Math.abs(parseFloat(totalLost))}
               <span className="text-base font-semibold text-slate-300 ml-1.5">
-                lbs {parseFloat(totalLost) > 0 ? 'lost' : 'gained'}
+                {unit} {parseFloat(totalLost) > 0 ? 'lost' : 'gained'}
               </span>
             </p>
           </div>
@@ -138,7 +147,7 @@ export default function Checkins() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                Weight (lbs)
+                Weight ({unit})
               </label>
               <input
                 type="number"
@@ -243,7 +252,7 @@ export default function Checkins() {
                     <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Weight</p>
                     <p className="text-xl font-bold text-white">
                       {checkin.weight}
-                      <span className="text-sm font-semibold text-slate-400 ml-1">lbs</span>
+                      <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>
                       {weightChange && parseFloat(weightChange) !== 0 && (
                         <span className={`text-sm font-bold ml-2 ${parseFloat(weightChange) < 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {parseFloat(weightChange) < 0 ? '↓' : '↑'} {Math.abs(parseFloat(weightChange))}

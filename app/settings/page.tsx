@@ -2,22 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
+import { useToast } from '@/components/Toast'
+import type { WeightUnit } from '@/lib/utils'
 
 interface UserSettings {
   starting_weight: number
   goal_weight?: number
   daily_calorie_target: number
   daily_protein_target: number
+  weight_unit?: WeightUnit
 }
 
 export default function Settings() {
   const router = useRouter()
-  const [settings, setSettings] = useState<UserSettings | null>(null)
+  const toast = useToast()
   const [edited, setEdited] = useState<Partial<UserSettings>>({})
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -39,34 +43,35 @@ export default function Settings() {
           .single()
 
         if (data) {
-          setSettings(data)
           setEdited(data)
         }
       } catch (error) {
         console.error('Error loading settings:', error)
+        toast('error', 'Could not load your settings.')
       } finally {
         setLoading(false)
       }
     }
 
     loadSettings()
-  }, [router])
+  }, [router, toast])
 
   const handleSave = async () => {
     if (!user || !edited) return
 
     try {
       const client = createClient()
-      await client
+      const { error } = await client
         .from('user_settings')
         .update(edited)
         .eq('id', user.id)
 
-      setSettings(edited as UserSettings)
+      if (error) throw error
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (error) {
       console.error('Error saving settings:', error)
+      toast('error', 'Could not save your settings.')
     }
   }
 
@@ -90,13 +95,41 @@ export default function Settings() {
         </div>
       )}
 
+      {/* Units */}
+      <div className="bg-slate-900 rounded-lg p-4 border border-slate-800 space-y-4">
+        <h2 className="font-semibold">Units</h2>
+        <div>
+          <label className="block text-sm font-semibold text-slate-200 mb-2">
+            Weight Unit
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['lbs', 'kg'] as const).map(unit => (
+              <button
+                key={unit}
+                onClick={() => setEdited({ ...edited, weight_unit: unit })}
+                className={`py-2.5 rounded-lg font-semibold transition border ${
+                  (edited.weight_unit || 'lbs') === unit
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {unit === 'lbs' ? 'Pounds (lbs)' : 'Kilograms (kg)'}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Display label only — existing entries are not converted.
+          </p>
+        </div>
+      </div>
+
       {/* Goals */}
       <div className="bg-slate-900 rounded-lg p-4 border border-slate-800 space-y-4">
         <h2 className="font-semibold">Goals</h2>
 
         <div>
           <label className="block text-sm font-semibold text-slate-200 mb-2">
-            Starting Weight (lbs)
+            Starting Weight ({edited.weight_unit || 'lbs'})
           </label>
           <input
             type="number"
@@ -109,7 +142,7 @@ export default function Settings() {
 
         <div>
           <label className="block text-sm font-semibold text-slate-200 mb-2">
-            Goal Weight (lbs)
+            Goal Weight ({edited.weight_unit || 'lbs'})
           </label>
           <input
             type="number"

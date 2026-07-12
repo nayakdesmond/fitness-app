@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { getDateString, formatDate } from '@/lib/utils'
+import { useToast } from '@/components/Toast'
 
 interface NutritionLog {
   id: string
@@ -19,12 +21,13 @@ interface UserSettings {
 
 export default function Nutrition() {
   const router = useRouter()
+  const toast = useToast()
   const [logs, setLogs] = useState<NutritionLog[]>([])
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [calories, setCalories] = useState('')
   const [protein, setProtein] = useState('')
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     const loadNutrition = async () => {
@@ -59,13 +62,14 @@ export default function Nutrition() {
         setLogs(data || [])
       } catch (error) {
         console.error('Error loading nutrition:', error)
+        toast('error', 'Could not load your nutrition logs.')
       } finally {
         setLoading(false)
       }
     }
 
     loadNutrition()
-  }, [router])
+  }, [router, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,7 +79,7 @@ export default function Nutrition() {
       const client = createClient()
       const today = getDateString()
 
-      const { data } = await client
+      const { data, error } = await client
         .from('nutrition_logs')
         .upsert([{
           user_id: user.id,
@@ -85,6 +89,7 @@ export default function Nutrition() {
         }])
         .select()
 
+      if (error) throw error
       if (data) {
         const updatedLogs = logs.filter(l => l.date !== today)
         setLogs([data[0], ...updatedLogs])
@@ -93,6 +98,7 @@ export default function Nutrition() {
       }
     } catch (error) {
       console.error('Error saving nutrition:', error)
+      toast('error', 'Could not save your nutrition entry.')
     }
   }
 
@@ -106,10 +112,10 @@ export default function Nutrition() {
     <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
       <h1 className="text-2xl font-bold text-white pt-2">Nutrition</h1>
 
-      {/* Today's Progress */}
+      {/* Today&apos;s Progress */}
       {todayLog && settings && (
         <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">Today's Progress</p>
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">Today&apos;s Progress</p>
           <div className="space-y-5">
             <div>
               <div className="flex justify-between items-baseline mb-2">
@@ -148,7 +154,7 @@ export default function Nutrition() {
 
       {/* Input Form */}
       <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">Log Today's Totals</p>
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">Log Today&apos;s Totals</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -192,7 +198,7 @@ export default function Nutrition() {
       <div className="space-y-3">
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide pt-2">History</p>
         {logs.length === 0 ? (
-          <p className="text-slate-400 text-center py-8">No logs yet — log today's totals above</p>
+          <p className="text-slate-400 text-center py-8">No logs yet — log today&apos;s totals above</p>
         ) : (
           logs.map((log) => (
             <div key={log.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800 flex items-center justify-between">

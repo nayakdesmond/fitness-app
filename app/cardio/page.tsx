@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { getDateString, formatDate } from '@/lib/utils'
+import { useToast } from '@/components/Toast'
 
 interface CardioSession {
   id: string
@@ -27,6 +29,7 @@ const CARDIO_ICONS: Record<string, string> = {
 
 export default function Cardio() {
   const router = useRouter()
+  const toast = useToast()
   const [sessions, setSessions] = useState<CardioSession[]>([])
   const [showForm, setShowForm] = useState(false)
   const [type, setType] = useState('running')
@@ -35,7 +38,7 @@ export default function Cardio() {
   const [calories, setCalories] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     const loadCardio = async () => {
@@ -60,13 +63,14 @@ export default function Cardio() {
         setSessions(data || [])
       } catch (error) {
         console.error('Error loading cardio:', error)
+        toast('error', 'Could not load your cardio sessions.')
       } finally {
         setLoading(false)
       }
     }
 
     loadCardio()
-  }, [router])
+  }, [router, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,7 +78,7 @@ export default function Cardio() {
 
     try {
       const client = createClient()
-      const { data } = await client
+      const { data, error } = await client
         .from('cardio_sessions')
         .insert([{
           user_id: user.id,
@@ -87,6 +91,7 @@ export default function Cardio() {
         }])
         .select()
 
+      if (error) throw error
       if (data) {
         setSessions([data[0], ...sessions])
         setDuration('')
@@ -97,6 +102,7 @@ export default function Cardio() {
       }
     } catch (error) {
       console.error('Error adding cardio:', error)
+      toast('error', 'Could not save your cardio session.')
     }
   }
 

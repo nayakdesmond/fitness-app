@@ -2,100 +2,40 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
-import { getDateString } from '@/lib/utils'
-
-interface Exercise {
-  id: string
-  name: string
-  target_reps?: number
-  display_order: number
-}
-
-interface WorkoutTemplate {
-  id: string
-  name: string
-  exercises: Exercise[]
-}
-
-interface WorkoutSet {
-  id?: string
-  exercise_id: string
-  exercise_name: string
-  set_number: number
-  reps?: number
-  weight?: number
-  rpe?: number
-  notes?: string
-}
-
-interface WorkoutSession {
-  id: string
-  template_id: string
-  template_name: string
-  date: string
-  completed: boolean
-  sets: WorkoutSet[]
-}
-
-interface PrevSet {
-  set_number: number
-  reps?: number
-  weight?: number
-  rpe?: number
-}
-
-function formatRestTime(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+import { getDateString, type WeightUnit } from '@/lib/utils'
+import { useToast } from '@/components/Toast'
+import ActiveSessionView, {
+  type PrevSet,
+  type WorkoutSession,
+} from '@/components/workouts/ActiveSessionView'
+import TemplateCard, { type WorkoutTemplate } from '@/components/workouts/TemplateCard'
+import ProgressView from '@/components/workouts/ProgressView'
 
 function WorkoutsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const toast = useToast()
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [activeSession, setActiveSession] = useState<WorkoutSession | null>(null)
   const [showNewTemplate, setShowNewTemplate] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
-  const [newExerciseName, setNewExerciseName] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
-  const [editTemplateName, setEditTemplateName] = useState('')
-  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null)
-  const [editingExerciseName, setEditingExerciseName] = useState('')
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('lbs')
+  const [view, setView] = useState<'templates' | 'progress'>('templates')
 
   // Progressive overload: previous session sets, keyed by exercise_id
   const [prevSets, setPrevSets] = useState<Record<string, PrevSet[]>>({})
-  const [prevDate, setPrevDate] = useState<string | null>(null)
 
-  // Rest timer
-  const [restSeconds, setRestSeconds] = useState<number | null>(null)
-  const [restDone, setRestDone] = useState(false)
-
-  useEffect(() => {
-    if (restSeconds === null) return
-    if (restSeconds <= 0) {
-      setRestDone(true)
-      setRestSeconds(null)
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate?.([200, 100, 200])
-      }
-      return
-    }
-    const t = setTimeout(() => {
-      setRestSeconds(s => (s !== null ? s - 1 : null))
-    }, 1000)
-    return () => clearTimeout(t)
-  }, [restSeconds])
-
-  const startRest = (seconds: number) => {
-    setRestDone(false)
-    setRestSeconds(seconds)
-  }
-
-  const loadPreviousSets = async (client: any, userId: string, templateId: string, beforeDate: string) => {
+  const loadPreviousSets = async (
+    client: ReturnType<typeof createClient>,
+    userId: string,
+    templateId: string,
+    beforeDate: string
+  ) => {
     try {
       const { data: prevSession } = await client
         .from('workout_sessions')
@@ -108,7 +48,6 @@ function WorkoutsContent() {
         .single()
 
       if (prevSession?.id) {
-        setPrevDate(prevSession.date)
         const { data: sets } = await client
           .from('workout_sets')
           .select('exercise_id, set_number, reps, weight, rpe')
@@ -123,19 +62,17 @@ function WorkoutsContent() {
               set_number: s.set_number,
               reps: s.reps,
               weight: s.weight,
-              rpe: s.rpe
+              rpe: s.rpe,
             })
           }
           setPrevSets(grouped)
         }
       } else {
         setPrevSets({})
-        setPrevDate(null)
       }
     } catch {
       // No previous session found — that's fine
       setPrevSets({})
-      setPrevDate(null)
     }
   }
 
@@ -152,7 +89,17 @@ function WorkoutsContent() {
 
         setUser(authUser)
 
-        const { data: templatesData } = await client
+        const { data: settingsData } = await client
+          .from('user_settings')
+          .select('weight_unit')
+          .eq('id', authUser.id)
+          .single()
+
+        if (settingsData?.weight_unit === 'kg') {
+          setWeightUnit('kg')
+        }
+
+        const { data: templatesData, error: templatesError } = await client
           .from('workout_templates')
           .select(`
             id,
@@ -168,8 +115,9 @@ function WorkoutsContent() {
           .eq('user_id', authUser.id)
           .order('display_order')
 
+        if (templatesError) throw templatesError
         if (templatesData) {
-          setTemplates(templatesData as any)
+          setTemplates(templatesData as unknown as WorkoutTemplate[])
         }
 
         const sessionId = searchParams.get('session')
@@ -197,34 +145,49 @@ function WorkoutsContent() {
             .single()
 
           if (sessionData) {
+            const row = sessionData as unknown as {
+              workout_templates: { name?: string } | null
+              workout_sets: Array<{
+                id: string
+                exercise_id: string
+                set_number: number
+                reps?: number
+                weight?: number
+                rpe?: number
+                notes?: string
+                exercises: { name?: string } | null
+              }> | null
+            }
             setActiveSession({
               id: sessionData.id,
               template_id: sessionData.template_id,
-              template_name: (sessionData as any).workout_templates?.name,
+              template_name: row.workout_templates?.name || 'Workout',
               date: sessionData.date,
               completed: sessionData.completed,
-              sets: (sessionData as any).workout_sets?.map((s: any) => ({
+              sets: row.workout_sets?.map((s) => ({
                 id: s.id,
                 exercise_id: s.exercise_id,
-                exercise_name: s.exercises?.name,
+                exercise_name: s.exercises?.name || '',
                 set_number: s.set_number,
                 reps: s.reps,
                 weight: s.weight,
                 rpe: s.rpe,
-                notes: s.notes
-              })) || []
+                notes: s.notes,
+              })) || [],
             })
             await loadPreviousSets(client, authUser.id, sessionData.template_id, sessionData.date)
           }
         }
       } catch (error) {
         console.error('Error loading workouts:', error)
+        toast('error', 'Could not load your workouts. Pull to refresh or try again.')
       } finally {
         setLoading(false)
       }
     }
 
     loadWorkouts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, searchParams])
 
   const createTemplate = async () => {
@@ -232,15 +195,16 @@ function WorkoutsContent() {
 
     try {
       const client = createClient()
-      const { data: templateData } = await client
+      const { data: templateData, error } = await client
         .from('workout_templates')
         .insert([{
           user_id: user.id,
           name: newTemplateName,
-          display_order: templates.length
+          display_order: templates.length,
         }])
         .select()
 
+      if (error) throw error
       if (templateData?.[0]) {
         setTemplates([...templates, { ...templateData[0], exercises: [] }])
         setNewTemplateName('')
@@ -249,54 +213,51 @@ function WorkoutsContent() {
       }
     } catch (error) {
       console.error('Error creating template:', error)
+      toast('error', 'Could not create the template.')
     }
   }
 
-  const addExercise = async () => {
-    if (!selectedTemplate || !newExerciseName.trim()) return
-
+  const addExercise = async (templateId: string, name: string) => {
     try {
       const client = createClient()
-      const { data: exerciseData } = await client
+      const { data: exerciseData, error } = await client
         .from('exercises')
         .insert([{
-          template_id: selectedTemplate,
-          name: newExerciseName,
-          display_order: 0
+          template_id: templateId,
+          name,
+          display_order: 0,
         }])
         .select()
 
+      if (error) throw error
       if (exerciseData?.[0]) {
-        const updatedTemplates = templates.map(t =>
-          t.id === selectedTemplate
-            ? { ...t, exercises: [...t.exercises, exerciseData[0] as any] }
+        setTemplates(templates.map(t =>
+          t.id === templateId
+            ? { ...t, exercises: [...t.exercises, exerciseData[0]] }
             : t
-        )
-        setTemplates(updatedTemplates)
-        setNewExerciseName('')
+        ))
       }
     } catch (error) {
       console.error('Error adding exercise:', error)
+      toast('error', 'Could not add the exercise.')
     }
   }
 
-  const renameTemplate = async (templateId: string) => {
-    if (!editTemplateName.trim()) return
-
+  const renameTemplate = async (templateId: string, name: string) => {
     try {
       const client = createClient()
       const { error } = await client
         .from('workout_templates')
-        .update({ name: editTemplateName.trim() })
+        .update({ name })
         .eq('id', templateId)
 
-      if (!error) {
-        setTemplates(templates.map(t =>
-          t.id === templateId ? { ...t, name: editTemplateName.trim() } : t
-        ))
-      }
+      if (error) throw error
+      setTemplates(templates.map(t =>
+        t.id === templateId ? { ...t, name } : t
+      ))
     } catch (error) {
       console.error('Error renaming template:', error)
+      toast('error', 'Could not rename the template.')
     }
   }
 
@@ -314,7 +275,7 @@ function WorkoutsContent() {
         .eq('id', templateId)
 
       if (error) {
-        alert('Could not delete — this template has logged workout history. You can rename it instead.')
+        toast('error', 'Could not delete — this template has logged workout history. You can rename it instead.')
         return
       }
 
@@ -322,31 +283,28 @@ function WorkoutsContent() {
       setSelectedTemplate(null)
     } catch (error) {
       console.error('Error deleting template:', error)
+      toast('error', 'Could not delete the template.')
     }
   }
 
-  const renameExercise = async (exerciseId: string) => {
-    if (!editingExerciseName.trim()) return
-
+  const renameExercise = async (exerciseId: string, name: string) => {
     try {
       const client = createClient()
       const { error } = await client
         .from('exercises')
-        .update({ name: editingExerciseName.trim() })
+        .update({ name })
         .eq('id', exerciseId)
 
-      if (!error) {
-        setTemplates(templates.map(t => ({
-          ...t,
-          exercises: t.exercises.map(ex =>
-            ex.id === exerciseId ? { ...ex, name: editingExerciseName.trim() } : ex
-          )
-        })))
-      }
-      setEditingExerciseId(null)
-      setEditingExerciseName('')
+      if (error) throw error
+      setTemplates(templates.map(t => ({
+        ...t,
+        exercises: t.exercises.map(ex =>
+          ex.id === exerciseId ? { ...ex, name } : ex
+        ),
+      })))
     } catch (error) {
       console.error('Error renaming exercise:', error)
+      toast('error', 'Could not rename the exercise.')
     }
   }
 
@@ -361,16 +319,17 @@ function WorkoutsContent() {
         .eq('id', exerciseId)
 
       if (error) {
-        alert('Could not delete — this exercise has logged sets. You can rename it instead.')
+        toast('error', 'Could not delete — this exercise has logged sets. You can rename it instead.')
         return
       }
 
       setTemplates(templates.map(t => ({
         ...t,
-        exercises: t.exercises.filter(ex => ex.id !== exerciseId)
+        exercises: t.exercises.filter(ex => ex.id !== exerciseId),
       })))
     } catch (error) {
       console.error('Error deleting exercise:', error)
+      toast('error', 'Could not delete the exercise.')
     }
   }
 
@@ -392,15 +351,16 @@ function WorkoutsContent() {
       let sessionId = existingSession?.id
 
       if (!sessionId) {
-        const { data: newSession } = await client
+        const { data: newSession, error } = await client
           .from('workout_sessions')
           .insert([{
             user_id: user.id,
             template_id: templateId,
-            date: today
+            date: today,
           }])
           .select()
 
+        if (error) throw error
         sessionId = newSession?.[0]?.id
       }
 
@@ -417,17 +377,18 @@ function WorkoutsContent() {
               exercise_id: ex.id,
               exercise_name: ex.name,
               set_number: 1,
-            }))
+            })),
           })
           await loadPreviousSets(client, user.id, templateId, today)
         }
       }
     } catch (error) {
       console.error('Error starting workout:', error)
+      toast('error', 'Could not start the workout.')
     }
   }
 
-  const saveSet = async (exerciseId: string, setNumber: number, data: any) => {
+  const saveSet = async (exerciseId: string, setNumber: number, data: Record<string, number>) => {
     if (!activeSession) return
 
     try {
@@ -442,22 +403,25 @@ function WorkoutsContent() {
         .single()
 
       if (existingSet?.id) {
-        await client
+        const { error } = await client
           .from('workout_sets')
           .update(data)
           .eq('id', existingSet.id)
+        if (error) throw error
       } else {
-        await client
+        const { error } = await client
           .from('workout_sets')
           .insert([{
             workout_session_id: activeSession.id,
             exercise_id: exerciseId,
             set_number: setNumber,
-            ...data
+            ...data,
           }])
+        if (error) throw error
       }
     } catch (error) {
       console.error('Error saving set:', error)
+      toast('error', 'Set not saved — check your connection.')
     }
   }
 
@@ -466,17 +430,17 @@ function WorkoutsContent() {
 
     try {
       const client = createClient()
-      await client
+      const { error } = await client
         .from('workout_sessions')
         .update({ completed: true })
         .eq('id', activeSession.id)
 
+      if (error) throw error
       setActiveSession(null)
-      setRestSeconds(null)
-      setRestDone(false)
       router.push('/')
     } catch (error) {
       console.error('Error completing workout:', error)
+      toast('error', 'Could not complete the workout — check your connection.')
     }
   }
 
@@ -484,167 +448,50 @@ function WorkoutsContent() {
     return <div className="text-center py-8 text-slate-400">Loading...</div>
   }
 
-  // Active workout view
   if (activeSession) {
     return (
-      <div className="max-w-2xl mx-auto px-4 pb-40 space-y-5">
-        <div className="flex justify-between items-center pt-2">
-          <div>
-            <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1">
-              In Progress
-            </p>
-            <h1 className="text-2xl font-bold text-white">{activeSession.template_name}</h1>
-          </div>
-          <button
-            onClick={() => setActiveSession(null)}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition text-lg"
-            aria-label="Close workout"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {templates.find(t => t.id === activeSession.template_id)?.exercises.map((exercise) => {
-            const lastSets = prevSets[exercise.id]
-            return (
-              <div key={exercise.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-                <h3 className="font-bold text-lg text-white">{exercise.name}</h3>
-
-                {/* Progressive overload hint */}
-                {lastSets && lastSets.length > 0 ? (
-                  <p className="text-sm text-blue-300 mt-1 mb-4">
-                    Last time:{' '}
-                    <span className="font-semibold">
-                      {lastSets
-                        .filter(s => s.reps || s.weight)
-                        .map(s => `${s.weight ?? '–'} lb × ${s.reps ?? '–'}`)
-                        .join(' · ') || 'logged, no data'}
-                    </span>
-                    {' '}— try to beat it 💪
-                  </p>
-                ) : (
-                  <p className="text-sm text-slate-500 mt-1 mb-4">First time logging this — set your baseline</p>
-                )}
-
-                <div className="space-y-3">
-                  {[1, 2, 3].map((setNum) => (
-                    <div key={setNum} className="flex items-center gap-3">
-                      <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700">
-                        <span className="text-sm font-bold text-slate-300">{setNum}</span>
-                      </div>
-
-                      <div className="flex-1 grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                            Reps
-                          </label>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            placeholder={String(lastSets?.find(s => s.set_number === setNum)?.reps ?? 0)}
-                            defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.reps || ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              if (val) saveSet(exercise.id, setNum, { reps: parseInt(val) })
-                            }}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                            Lbs
-                          </label>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            placeholder={String(lastSets?.find(s => s.set_number === setNum)?.weight ?? 0)}
-                            defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.weight || ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              if (val) saveSet(exercise.id, setNum, { weight: parseFloat(val) })
-                            }}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                            RPE
-                          </label>
-                          <select
-                            defaultValue={activeSession.sets.find(s => s.exercise_id === exercise.id && s.set_number === setNum)?.rpe || ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              if (val) saveSet(exercise.id, setNum, { rpe: parseInt(val) })
-                            }}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-1 py-2.5 text-center text-base font-bold text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          >
-                            <option value="">-</option>
-                            {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <button
-          onClick={completeWorkout}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-base py-3.5 rounded-xl transition shadow-lg shadow-green-900/30"
-        >
-          ✓ Complete Workout
-        </button>
-
-        {/* Rest timer bar — fixed above bottom nav */}
-        <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2">
-          <div className="max-w-2xl mx-auto">
-            {restSeconds !== null ? (
-              <div className="flex items-center justify-between bg-blue-600 rounded-xl px-4 py-3 shadow-lg">
-                <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">Rest</span>
-                <span className="text-2xl font-bold text-white tabular-nums">{formatRestTime(restSeconds)}</span>
-                <button
-                  onClick={() => setRestSeconds(null)}
-                  className="text-sm font-semibold text-blue-100 hover:text-white transition"
-                >
-                  Skip
-                </button>
-              </div>
-            ) : restDone ? (
-              <button
-                onClick={() => setRestDone(false)}
-                className="w-full bg-green-600 rounded-xl px-4 py-3 shadow-lg text-white font-bold"
-              >
-                ✓ Rest done — go!
-              </button>
-            ) : (
-              <div className="flex items-center gap-2 bg-slate-900/95 backdrop-blur rounded-xl px-3 py-2.5 border border-slate-700 shadow-lg">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Rest</span>
-                {[60, 90, 120, 180].map(secs => (
-                  <button
-                    key={secs}
-                    onClick={() => startRest(secs)}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg py-1.5 text-sm font-bold text-white transition"
-                  >
-                    {formatRestTime(secs)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <ActiveSessionView
+        session={activeSession}
+        exercises={templates.find(t => t.id === activeSession.template_id)?.exercises || []}
+        prevSets={prevSets}
+        weightUnit={weightUnit}
+        onSaveSet={saveSet}
+        onComplete={completeWorkout}
+        onClose={() => setActiveSession(null)}
+      />
     )
   }
 
-  // Templates list view
   return (
     <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
       <h1 className="text-2xl font-bold text-white pt-2">Workouts</h1>
 
+      {/* View toggle */}
+      <div className="grid grid-cols-2 gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+        {(
+          [
+            ['templates', 'Templates'],
+            ['progress', 'Progress'],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`py-2 rounded-lg text-sm font-semibold transition ${
+              view === v ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'progress' && user && (
+        <ProgressView userId={user.id} weightUnit={weightUnit} />
+      )}
+
+      {view === 'templates' && (
+        <>
       {showNewTemplate && (
         <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-3">
           <input
@@ -682,162 +529,23 @@ function WorkoutsContent() {
 
       <div className="space-y-3">
         {templates.map((template) => (
-          <div key={template.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-            <h3 className="font-bold text-lg text-white mb-1">{template.name}</h3>
-            <p className="text-sm text-slate-400 mb-3">{template.exercises.length} exercises</p>
-
-            {selectedTemplate === template.id && (
-              <div className="bg-slate-800 rounded-xl p-3 mb-3 space-y-3">
-                {/* Rename template */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                    Template Name
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={editTemplateName}
-                      onChange={(e) => setEditTemplateName(e.target.value)}
-                      className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm font-semibold focus:border-blue-500 focus:outline-none"
-                    />
-                    <button
-                      onClick={() => renameTemplate(template.id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-
-                {/* Edit exercises */}
-                {template.exercises.length > 0 && (
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                      Exercises — tap ✏️ to rename
-                    </label>
-                    <div className="space-y-1.5">
-                      {template.exercises.map((ex) => (
-                        <div key={ex.id} className="flex items-center gap-2">
-                          {editingExerciseId === ex.id ? (
-                            <>
-                              <input
-                                type="text"
-                                value={editingExerciseName}
-                                onChange={(e) => setEditingExerciseName(e.target.value)}
-                                autoFocus
-                                className="flex-1 bg-slate-700 border border-blue-500 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none"
-                              />
-                              <button
-                                onClick={() => renameExercise(ex.id)}
-                                className="text-green-400 hover:text-green-300 font-bold px-2 py-1"
-                                aria-label="Save name"
-                              >
-                                ✓
-                              </button>
-                              <button
-                                onClick={() => { setEditingExerciseId(null); setEditingExerciseName('') }}
-                                className="text-slate-400 hover:text-white px-2 py-1"
-                                aria-label="Cancel"
-                              >
-                                ✕
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <span className="flex-1 text-sm text-slate-200 bg-slate-700/50 rounded-lg px-3 py-1.5">
-                                {ex.name}
-                              </span>
-                              <button
-                                onClick={() => { setEditingExerciseId(ex.id); setEditingExerciseName(ex.name) }}
-                                className="text-slate-300 hover:text-white px-2 py-1"
-                                aria-label="Rename exercise"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => deleteExercise(ex.id)}
-                                className="text-red-400 hover:text-red-300 px-2 py-1"
-                                aria-label="Delete exercise"
-                              >
-                                🗑️
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Add exercise */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                    Add Exercise
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newExerciseName}
-                      onChange={(e) => setNewExerciseName(e.target.value)}
-                      placeholder="Exercise name"
-                      className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                    <button
-                      onClick={addExercise}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={() => setSelectedTemplate(null)}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-lg text-sm transition"
-                  >
-                    Done
-                  </button>
-                  <button
-                    onClick={() => deleteTemplate(template.id)}
-                    className="bg-red-900/60 hover:bg-red-900 text-red-300 font-semibold px-4 py-2 rounded-lg text-sm transition border border-red-800/50"
-                  >
-                    Delete Template
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {selectedTemplate !== template.id && template.exercises.length > 0 && (
-              <div className="space-y-1.5 mb-4">
-                {template.exercises.map((ex) => (
-                  <div key={ex.id} className="text-sm text-slate-300 flex items-center gap-2">
-                    <span className="w-1 h-1 rounded-full bg-slate-500" />
-                    {ex.name}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => startWorkout(template.id, template.name)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition"
-              >
-                Start
-              </button>
-              {selectedTemplate !== template.id && (
-                <button
-                  onClick={() => { setSelectedTemplate(template.id); setEditTemplateName(template.name) }}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-lg text-sm transition border border-slate-700"
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-          </div>
+          <TemplateCard
+            key={template.id}
+            template={template}
+            isEditing={selectedTemplate === template.id}
+            onStart={() => startWorkout(template.id, template.name)}
+            onOpenEdit={() => setSelectedTemplate(template.id)}
+            onCloseEdit={() => setSelectedTemplate(null)}
+            onRename={(name) => renameTemplate(template.id, name)}
+            onDelete={() => deleteTemplate(template.id)}
+            onAddExercise={(name) => addExercise(template.id, name)}
+            onRenameExercise={renameExercise}
+            onDeleteExercise={deleteExercise}
+          />
         ))}
       </div>
+        </>
+      )}
     </div>
   )
 }
