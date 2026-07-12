@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { getDateString, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
+import FoodSearch from '@/components/nutrition/FoodSearch'
 
 interface NutritionLog {
   id: string
@@ -102,6 +103,35 @@ export default function Nutrition() {
     }
   }
 
+  const addFood = async (cals: number, prot: number, label: string) => {
+    if (!user) return
+
+    try {
+      const client = createClient()
+      const today = getDateString()
+      const current = logs.find(l => l.date === today)
+
+      const { data, error } = await client
+        .from('nutrition_logs')
+        .upsert([{
+          user_id: user.id,
+          date: today,
+          calories: (current?.calories || 0) + cals,
+          protein: (current?.protein || 0) + prot
+        }])
+        .select()
+
+      if (error) throw error
+      if (data) {
+        setLogs([data[0], ...logs.filter(l => l.date !== today)])
+        toast('success', `Added ${label} — ${cals} cal, ${prot}g protein`)
+      }
+    } catch (error) {
+      console.error('Error adding food:', error)
+      toast('error', 'Could not add the food to your log.')
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-8 text-slate-400">Loading...</div>
   }
@@ -151,6 +181,9 @@ export default function Nutrition() {
           </div>
         </div>
       )}
+
+      {/* Food search — adds to today's totals */}
+      <FoodSearch onAdd={addFood} />
 
       {/* Input Form */}
       <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">

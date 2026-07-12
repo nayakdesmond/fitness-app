@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Exercise } from './ActiveSessionView'
+import { searchExercises } from '@/lib/exerciseLibrary'
 
 export interface WorkoutTemplate {
   id: string
@@ -141,7 +142,7 @@ export default function TemplateCard({
             </div>
           )}
 
-          {/* Add exercise */}
+          {/* Add exercise — library autocomplete with free-text fallback */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
               Add Exercise
@@ -151,7 +152,7 @@ export default function TemplateCard({
                 type="text"
                 value={newExerciseName}
                 onChange={(e) => setNewExerciseName(e.target.value)}
-                placeholder="Exercise name"
+                placeholder="Search library or type your own"
                 className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm focus:border-blue-500 focus:outline-none"
               />
               <button
@@ -161,6 +162,25 @@ export default function TemplateCard({
                 Add
               </button>
             </div>
+            {newExerciseName.trim() && (
+              <div className="mt-1.5 space-y-1">
+                {searchExercises(newExerciseName, template.exercises.map(ex => ex.name)).map(sug => (
+                  <button
+                    key={sug.name}
+                    onClick={() => {
+                      onAddExercise(sug.name)
+                      setNewExerciseName('')
+                    }}
+                    className="w-full flex items-center justify-between bg-slate-700/60 hover:bg-slate-600 rounded-lg px-3 py-2 text-left transition"
+                  >
+                    <span className="text-sm text-white">{sug.name}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-800 rounded-full px-2 py-0.5 ml-2 shrink-0">
+                      {sug.muscle}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-1">

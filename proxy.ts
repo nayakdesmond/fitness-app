@@ -30,7 +30,14 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
+  const { pathname } = request.nextUrl
+
+  // Public API routes: food search proxies a public dataset and holds no user data
+  if (pathname.startsWith('/api/food-search')) {
+    return response
+  }
+
+  const isAuthPage = pathname.startsWith('/auth')
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()
