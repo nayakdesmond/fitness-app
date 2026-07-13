@@ -32,8 +32,9 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Public API routes: food search proxies a public dataset and holds no user data
-  if (pathname.startsWith('/api/food-search')) {
+  // Public routes: food search proxies a public dataset; /offline is the
+  // service worker's fallback shell. Neither holds user data.
+  if (pathname.startsWith('/api/food-search') || pathname === '/offline') {
     return response
   }
 
@@ -56,7 +57,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on all routes except static assets
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // Run on all routes except static assets and PWA files (sw.js, manifest, icons)
+    '/((?!_next/static|_next/image|sw.js|manifest.webmanifest|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

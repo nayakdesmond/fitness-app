@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { getDateString, formatDate } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
+import { writeOrQueue } from '@/lib/offlineQueue'
 import FoodSearch from '@/components/nutrition/FoodSearch'
 
 interface NutritionLog {
@@ -72,31 +73,32 @@ export default function Nutrition() {
     loadNutrition()
   }, [router, toast])
 
+  // Upsert the full day total (calories + protein) through the offline queue.
+  const persistTotals = async (userId: string, cals: number, prot: number) => {
+    const today = getDateString()
+    const current = logs.find(l => l.date === today)
+    const res = await writeOrQueue(createClient(), {
+      key: `nutrition_logs:${userId}:${today}`,
+      table: 'nutrition_logs',
+      op: 'upsert',
+      onConflict: 'user_id,date',
+      payload: { user_id: userId, date: today, calories: cals, protein: prot },
+    })
+    if (res.error) throw res.error
+    const entry = { id: current?.id ?? crypto.randomUUID(), date: today, calories: cals, protein: prot }
+    setLogs([entry, ...logs.filter(l => l.date !== today)])
+    return res
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
 
     try {
-      const client = createClient()
-      const today = getDateString()
-
-      const { data, error } = await client
-        .from('nutrition_logs')
-        .upsert([{
-          user_id: user.id,
-          date: today,
-          calories: parseInt(calories) || 0,
-          protein: parseInt(protein) || 0
-        }])
-        .select()
-
-      if (error) throw error
-      if (data) {
-        const updatedLogs = logs.filter(l => l.date !== today)
-        setLogs([data[0], ...updatedLogs])
-        setCalories('')
-        setProtein('')
-      }
+      const res = await persistTotals(user.id, parseInt(calories) || 0, parseInt(protein) || 0)
+      setCalories('')
+      setProtein('')
+      if (res.queued) toast('success', 'Saved offline — will sync')
     } catch (error) {
       console.error('Error saving nutrition:', error)
       toast('error', 'Could not save your nutrition entry.')
@@ -107,25 +109,11 @@ export default function Nutrition() {
     if (!user) return
 
     try {
-      const client = createClient()
-      const today = getDateString()
-      const current = logs.find(l => l.date === today)
-
-      const { data, error } = await client
-        .from('nutrition_logs')
-        .upsert([{
-          user_id: user.id,
-          date: today,
-          calories: (current?.calories || 0) + cals,
-          protein: (current?.protein || 0) + prot
-        }])
-        .select()
-
-      if (error) throw error
-      if (data) {
-        setLogs([data[0], ...logs.filter(l => l.date !== today)])
-        toast('success', `Added ${label} — ${cals} cal, ${prot}g protein`)
-      }
+      const current = logs.find(l => l.date === getDateString())
+      const res = await persistTotals(user.id, (current?.calories || 0) + cals, (current?.protein || 0) + prot)
+      toast('success', res.queued
+        ? `Added ${label} (offline — will sync)`
+        : `Added ${label} — ${cals} cal, ${prot}g protein`)
     } catch (error) {
       console.error('Error adding food:', error)
       toast('error', 'Could not add the food to your log.')

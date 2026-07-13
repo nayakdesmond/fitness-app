@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { getDateString, formatDate, type WeightUnit } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
+import { writeOrQueue } from '@/lib/offlineQueue'
 import WeightTrendChart, { computeTrend } from '@/components/checkins/WeightTrendChart'
 
 interface DailyWeight {
@@ -74,23 +75,22 @@ export default function Checkins() {
 
     setSaving(true)
     try {
-      const client = createClient()
       const today = getDateString()
+      const value = parseFloat(weight)
 
-      const { data, error } = await client
-        .from('daily_weights')
-        .upsert(
-          [{ user_id: user.id, date: today, weight: parseFloat(weight) }],
-          { onConflict: 'user_id,date' }
-        )
-        .select()
+      const res = await writeOrQueue(createClient(), {
+        key: `daily_weights:${user.id}:${today}`,
+        table: 'daily_weights',
+        op: 'upsert',
+        onConflict: 'user_id,date',
+        payload: { user_id: user.id, date: today, weight: value },
+      })
 
-      if (error) throw error
-      if (data) {
-        setEntries([data[0], ...entries.filter(en => en.date !== today)])
-        setWeight('')
-        toast('success', "Logged today's weight")
-      }
+      if (res.error) throw res.error
+      const entry = { id: crypto.randomUUID(), date: today, weight: value }
+      setEntries([entry, ...entries.filter(en => en.date !== today)])
+      setWeight('')
+      toast('success', res.queued ? 'Saved offline — will sync' : "Logged today's weight")
     } catch (error) {
       console.error('Error saving weight:', error)
       toast('error', 'Could not save your weight.')

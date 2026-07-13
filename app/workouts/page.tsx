@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { getDateString, type WeightUnit } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
+import { writeOrQueue } from '@/lib/offlineQueue'
 import ActiveSessionView, {
   type PrevSet,
   type WorkoutSession,
@@ -26,6 +27,10 @@ function WorkoutsContent() {
   const [user, setUser] = useState<User | null>(null)
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('lbs')
   const [view, setView] = useState<'templates' | 'progress'>('templates')
+
+  // Accumulates each set's full values so every write is a complete row
+  // (partial field edits merge here), keyed by `${exerciseId}:${setNumber}`.
+  const setValues = useRef<Record<string, Record<string, number>>>({})
 
   // Progressive overload: previous session sets, keyed by exercise_id
   const [prevSets, setPrevSets] = useState<Record<string, PrevSet[]>>({})
@@ -333,6 +338,11 @@ function WorkoutsContent() {
     }
   }
 
+  // Fresh accumulator whenever we switch into a different session
+  useEffect(() => {
+    setValues.current = {}
+  }, [activeSession?.id])
+
   const startWorkout = async (templateId: string, templateName: string) => {
     if (!user) return
 
@@ -340,46 +350,51 @@ function WorkoutsContent() {
       const client = createClient()
       const today = getDateString()
 
-      const { data: existingSession } = await client
-        .from('workout_sessions')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('template_id', templateId)
-        .eq('date', today)
-        .single()
-
-      let sessionId = existingSession?.id
-
-      if (!sessionId) {
-        const { data: newSession, error } = await client
+      // Reuse today's session if one exists; offline this read just fails and
+      // we create a new one with a client-generated id.
+      let sessionId: string | undefined
+      try {
+        const { data: existing } = await client
           .from('workout_sessions')
-          .insert([{
-            user_id: user.id,
-            template_id: templateId,
-            date: today,
-          }])
-          .select()
-
-        if (error) throw error
-        sessionId = newSession?.[0]?.id
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('template_id', templateId)
+          .eq('date', today)
+          .maybeSingle()
+        sessionId = existing?.id
+      } catch {
+        // offline — fall through to create
       }
 
-      if (sessionId) {
-        const template = templates.find(t => t.id === templateId)
-        if (template) {
-          setActiveSession({
-            id: sessionId,
-            template_id: templateId,
-            template_name: templateName,
-            date: today,
-            completed: false,
-            sets: template.exercises.map((ex) => ({
-              exercise_id: ex.id,
-              exercise_name: ex.name,
-              set_number: 1,
-            })),
-          })
+      if (!sessionId) {
+        sessionId = crypto.randomUUID()
+        const res = await writeOrQueue(client, {
+          key: `workout_sessions:create:${sessionId}`,
+          table: 'workout_sessions',
+          op: 'insert',
+          payload: { id: sessionId, user_id: user.id, template_id: templateId, date: today },
+        })
+        if (res.error) throw res.error
+      }
+
+      const template = templates.find(t => t.id === templateId)
+      if (template) {
+        setActiveSession({
+          id: sessionId,
+          template_id: templateId,
+          template_name: templateName,
+          date: today,
+          completed: false,
+          sets: template.exercises.map((ex) => ({
+            exercise_id: ex.id,
+            exercise_name: ex.name,
+            set_number: 1,
+          })),
+        })
+        try {
           await loadPreviousSets(client, user.id, templateId, today)
+        } catch {
+          // offline — no previous-set hints, that's fine
         }
       }
     } catch (error) {
@@ -391,34 +406,33 @@ function WorkoutsContent() {
   const saveSet = async (exerciseId: string, setNumber: number, data: Record<string, number>) => {
     if (!activeSession) return
 
+    const key = `${exerciseId}:${setNumber}`
+    // Seed from any already-loaded values so a partial edit keeps the rest
+    if (!setValues.current[key]) {
+      const existing = activeSession.sets.find(
+        s => s.exercise_id === exerciseId && s.set_number === setNumber
+      )
+      setValues.current[key] = {}
+      if (existing?.reps != null) setValues.current[key].reps = existing.reps
+      if (existing?.weight != null) setValues.current[key].weight = existing.weight
+      if (existing?.rpe != null) setValues.current[key].rpe = existing.rpe
+    }
+    setValues.current[key] = { ...setValues.current[key], ...data }
+
     try {
-      const client = createClient()
-
-      const { data: existingSet } = await client
-        .from('workout_sets')
-        .select('id')
-        .eq('workout_session_id', activeSession.id)
-        .eq('exercise_id', exerciseId)
-        .eq('set_number', setNumber)
-        .single()
-
-      if (existingSet?.id) {
-        const { error } = await client
-          .from('workout_sets')
-          .update(data)
-          .eq('id', existingSet.id)
-        if (error) throw error
-      } else {
-        const { error } = await client
-          .from('workout_sets')
-          .insert([{
-            workout_session_id: activeSession.id,
-            exercise_id: exerciseId,
-            set_number: setNumber,
-            ...data,
-          }])
-        if (error) throw error
-      }
+      const res = await writeOrQueue(createClient(), {
+        key: `workout_sets:${activeSession.id}:${exerciseId}:${setNumber}`,
+        table: 'workout_sets',
+        op: 'upsert',
+        onConflict: 'workout_session_id,exercise_id,set_number',
+        payload: {
+          workout_session_id: activeSession.id,
+          exercise_id: exerciseId,
+          set_number: setNumber,
+          ...setValues.current[key],
+        },
+      })
+      if (res.error) throw res.error
     } catch (error) {
       console.error('Error saving set:', error)
       toast('error', 'Set not saved — check your connection.')
@@ -429,18 +443,20 @@ function WorkoutsContent() {
     if (!activeSession) return
 
     try {
-      const client = createClient()
-      const { error } = await client
-        .from('workout_sessions')
-        .update({ completed: true })
-        .eq('id', activeSession.id)
-
-      if (error) throw error
+      const res = await writeOrQueue(createClient(), {
+        key: `workout_sessions:complete:${activeSession.id}`,
+        table: 'workout_sessions',
+        op: 'update',
+        match: { id: activeSession.id },
+        payload: { completed: true },
+      })
+      if (res.error) throw res.error
+      if (res.queued) toast('success', 'Workout saved offline — will sync')
       setActiveSession(null)
       router.push('/')
     } catch (error) {
       console.error('Error completing workout:', error)
-      toast('error', 'Could not complete the workout — check your connection.')
+      toast('error', 'Could not complete the workout.')
     }
   }
 

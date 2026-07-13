@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { formatDateFull, getDateString, type WeightUnit } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
+import { writeOrQueue } from '@/lib/offlineQueue'
 import WeightTrendChart, { computeTrend } from '@/components/checkins/WeightTrendChart'
 
 interface UserSettings {
@@ -129,24 +130,24 @@ export default function Dashboard() {
 
     setSavingWeight(true)
     try {
-      const client = createClient()
       const today = getDateString()
       const value = parseFloat(weightInput)
 
-      const { error } = await client
-        .from('daily_weights')
-        .upsert(
-          [{ user_id: userId, date: today, weight: value }],
-          { onConflict: 'user_id,date' }
-        )
+      const res = await writeOrQueue(createClient(), {
+        key: `daily_weights:${userId}:${today}`,
+        table: 'daily_weights',
+        op: 'upsert',
+        onConflict: 'user_id,date',
+        payload: { user_id: userId, date: today, weight: value },
+      })
 
-      if (error) throw error
+      if (res.error) throw res.error
       setWeights(prev => {
         const rest = prev.filter(w => w.date !== today)
         return [...rest, { date: today, weight: value }]
       })
       setWeightInput('')
-      toast('success', "Logged today's weight")
+      toast('success', res.queued ? 'Saved offline — will sync' : "Logged today's weight")
     } catch (error) {
       console.error('Error logging weight:', error)
       toast('error', 'Could not save your weight.')

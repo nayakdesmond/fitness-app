@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#0a0a0a"/>
+  <g fill="#ffffff">
+    <!-- center bar -->
+    <rect x="190" y="240" width="132" height="32" rx="8"/>
+    <!-- inner plates -->
+    <rect x="150" y="196" width="40" height="120" rx="14"/>
+    <rect x="322" y="196" width="40" height="120" rx="14"/>
+    <!-- outer plates -->
+    <rect x="110" y="216" width="32" height="80" rx="12"/>
+    <rect x="370" y="216" width="32" height="80" rx="12"/>
+    <!-- end caps -->
+    <rect x="92" y="232" width="18" height="48" rx="8"/>
+    <rect x="402" y="232" width="18" height="48" rx="8"/>
+  </g>
+</svg>
