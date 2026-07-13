@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation"
 export default function Navigation() {
   const pathname = usePathname()
 
-  // Hide nav on auth pages
-  if (pathname?.startsWith("/auth")) {
+  // Hide nav on auth and onboarding pages
+  if (pathname?.startsWith("/auth") || pathname === "/onboarding") {
     return null
   }
 

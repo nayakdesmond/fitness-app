@@ -61,9 +61,14 @@ export default function Dashboard() {
           .from('user_settings')
           .select('*')
           .eq('id', authUser.id)
-          .single()
+          .maybeSingle()
 
-        if (settingsData) setSettings(settingsData)
+        // No settings row yet → send them through onboarding
+        if (!settingsData) {
+          router.push('/onboarding')
+          return
+        }
+        setSettings(settingsData)
 
         const today = getDateString()
         const { data: sessionsData } = await client

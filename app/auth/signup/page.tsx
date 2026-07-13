@@ -27,15 +27,8 @@ export default function Signup() {
       if (signupError) {
         setError(signupError.message)
       } else if (user) {
-        // Create user_settings record
-        await client.from('user_settings').insert([{
-          id: user.id,
-          starting_weight: 173,
-          goal_weight: 165,
-          daily_calorie_target: 2000,
-          daily_protein_target: 170
-        }])
-        router.push("/")
+        // Settings are collected in the onboarding flow, per-user
+        router.push("/onboarding")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
