@@ -1,15 +1,28 @@
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
+import { Anton, Oswald } from "next/font/google"
 import "./globals.css"
 import Navigation from "@/components/Navigation"
+import TopBar from "@/components/TopBar"
 import { ToastProvider } from "@/components/Toast"
 import { Suspense } from "react"
 
-const inter = Inter({ subsets: ["latin"] })
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-anton",
+  display: "swap",
+})
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-oswald",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
-  title: "Fitness Tracker",
-  description: "Track your 8-week cut",
+  title: "Train with Dara",
+  description: "Personal training & nutrition coaching — hustle for the muscle",
 }
 
 export const viewport: Viewport = {
@@ -24,15 +37,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-slate-950 text-slate-50`}>
+    <html lang="en" className={`dark ${anton.variable} ${oswald.variable}`}>
+      <body className="bg-neutral-950 text-neutral-50 antialiased">
         <ToastProvider>
           <Suspense fallback={null}>
-            <Navigation />
+            <TopBar />
           </Suspense>
           <main className="pb-24 pt-4">
             {children}
           </main>
+          <Suspense fallback={null}>
+            <Navigation />
+          </Suspense>
         </ToastProvider>
       </body>
     </html>

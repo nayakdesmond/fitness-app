@@ -12,7 +12,7 @@ export default function Navigation() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 flex justify-around p-3">
+    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-700 flex justify-around p-3">
       <Link href="/" className={`text-2xl ${pathname === "/" ? "opacity-100" : "opacity-50"}`}>📊</Link>
       <Link href="/workouts" className={`text-2xl ${pathname === "/workouts" ? "opacity-100" : "opacity-50"}`}>🏋️</Link>
       <Link href="/cardio" className={`text-2xl ${pathname === "/cardio" ? "opacity-100" : "opacity-50"}`}>🏃</Link>

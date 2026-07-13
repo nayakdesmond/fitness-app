@@ -100,7 +100,7 @@ export default function Checkins() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-slate-400">Loading...</div>
+    return <div className="text-center py-8 text-neutral-400">Loading...</div>
   }
 
   const unit = settings?.weight_unit || 'lbs'
@@ -117,11 +117,11 @@ export default function Checkins() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
-      <h1 className="text-2xl font-bold text-white pt-2">Weight</h1>
+      <h1 className="text-2xl font-display uppercase tracking-wide text-white pt-2">Weight</h1>
 
       {/* Quick daily weigh-in */}
-      <form onSubmit={handleSubmit} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+      <form onSubmit={handleSubmit} className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+        <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-2">
           {loggedToday ? "Update Today's Weight" : "Log Today's Weight"}
         </label>
         <div className="flex gap-2">
@@ -132,13 +132,13 @@ export default function Checkins() {
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             placeholder={unit}
-            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+            className="flex-1 bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-neutral-600 focus:border-white focus:outline-none"
             required
           />
           <button
             type="submit"
             disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-bold px-6 rounded-lg transition"
+            className="bg-white hover:bg-neutral-200 disabled:bg-neutral-600 text-black font-bold px-6 rounded-lg transition"
           >
             {saving ? '…' : loggedToday ? 'Update' : 'Save'}
           </button>
@@ -147,13 +147,13 @@ export default function Checkins() {
 
       {/* Trend summary + chart */}
       {ascending.length > 0 && (
-        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
           <div className="flex justify-between items-baseline mb-3">
             <div>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Trend Weight</p>
+              <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">Trend Weight</p>
               <p className="text-3xl font-bold text-white">
                 {latestTrend}
-                <span className="text-base font-semibold text-slate-400 ml-1">{unit}</span>
+                <span className="text-base font-semibold text-neutral-400 ml-1">{unit}</span>
               </p>
             </div>
             {totalChange !== null && Math.abs(totalChange) >= 0.1 && (
@@ -173,7 +173,7 @@ export default function Checkins() {
             points={ascending.map(en => ({ date: en.date, weight: en.weight }))}
             unit={unit}
           />
-          <p className="text-[11px] text-slate-500 mt-1.5 text-center">
+          <p className="text-[11px] text-neutral-500 mt-1.5 text-center">
             Faint dots are daily weigh-ins · the line is a smoothed 7-day trend
           </p>
         </div>
@@ -182,7 +182,7 @@ export default function Checkins() {
       {/* Entry list */}
       <div className="space-y-2">
         {entries.length === 0 ? (
-          <p className="text-slate-400 text-center py-8">No weigh-ins yet — log your weight above</p>
+          <p className="text-neutral-400 text-center py-8">No weigh-ins yet — log your weight above</p>
         ) : (
           entries.map((en, index) => {
             const prev = entries[index + 1] // older
@@ -190,14 +190,14 @@ export default function Checkins() {
             return (
               <div
                 key={en.id}
-                className="bg-slate-900 rounded-xl px-4 py-3 border border-slate-800 flex items-center justify-between"
+                className="bg-neutral-900 rounded-xl px-4 py-3 border border-neutral-800 flex items-center justify-between"
               >
-                <p className="text-sm font-semibold text-slate-300">
+                <p className="text-sm font-semibold text-neutral-300">
                   {en.date === today ? 'Today' : formatDate(en.date)}
                 </p>
                 <p className="text-lg font-bold text-white">
                   {en.weight}
-                  <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>
+                  <span className="text-sm font-semibold text-neutral-400 ml-1">{unit}</span>
                   {change !== null && change !== 0 && (
                     <span className={`text-sm font-bold ml-2 ${change < 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {change < 0 ? '↓' : '↑'} {Math.abs(change)}

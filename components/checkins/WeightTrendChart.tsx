@@ -84,12 +84,12 @@ export default function WeightTrendChart({
     <div className="relative">
       {interactive && hoverIdx !== null && (
         <div
-          className="absolute -top-1 z-10 -translate-x-1/2 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1 text-xs whitespace-nowrap pointer-events-none shadow-lg"
+          className="absolute -top-1 z-10 -translate-x-1/2 bg-neutral-800 border border-neutral-600 rounded-lg px-2.5 py-1 text-xs whitespace-nowrap pointer-events-none shadow-lg"
           style={{ left: `${(x(hoverIdx) / W) * 100}%` }}
         >
-          <span className="text-slate-400">{formatDate(points[hoverIdx].date)} · </span>
+          <span className="text-neutral-400">{formatDate(points[hoverIdx].date)} · </span>
           <span className="font-bold text-white">{points[hoverIdx].weight} {unit}</span>
-          <span className="text-blue-300"> · trend {Math.round(trend[hoverIdx] * 10) / 10}</span>
+          <span className="text-neutral-300"> · trend {Math.round(trend[hoverIdx] * 10) / 10}</span>
         </div>
       )}
       <svg
@@ -102,35 +102,35 @@ export default function WeightTrendChart({
         {showAxes &&
           gridValues.map((v, i) => (
             <g key={i}>
-              <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke="#1e293b" strokeWidth="1" />
-              <text x={padL - 5} y={y(v) + 3} textAnchor="end" fontSize="9" fill="#64748b">
+              <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke="#262626" strokeWidth="1" />
+              <text x={padL - 5} y={y(v) + 3} textAnchor="end" fontSize="9" fill="#737373">
                 {Math.round(v)}
               </text>
             </g>
           ))}
 
         {interactive && hoverIdx !== null && (
-          <line x1={x(hoverIdx)} x2={x(hoverIdx)} y1={padT - 6} y2={H - padB} stroke="#475569" strokeWidth="1" />
+          <line x1={x(hoverIdx)} x2={x(hoverIdx)} y1={padT - 6} y2={H - padB} stroke="#525252" strokeWidth="1" />
         )}
 
         {/* Raw daily weigh-ins — faint dots */}
         {points.map((p, i) => (
-          <circle key={i} cx={x(i)} cy={y(p.weight)} r={i === hoverIdx ? 3.5 : 2} fill="#64748b" opacity={0.7} />
+          <circle key={i} cx={x(i)} cy={y(p.weight)} r={i === hoverIdx ? 3.5 : 2} fill="#737373" opacity={0.7} />
         ))}
 
         {/* Smoothed trend — the signal */}
         <path d={trendPath} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 
         {/* Emphasize latest trend point */}
-        <circle cx={x(lastIdx)} cy={y(trend[lastIdx])} r={4} fill="#3b82f6" stroke="#0f172a" strokeWidth="2" />
+        <circle cx={x(lastIdx)} cy={y(trend[lastIdx])} r={4} fill="#3b82f6" stroke="#171717" strokeWidth="2" />
 
         {showAxes && (
           <>
-            <text x={padL} y={H - 6} fontSize="9" fill="#64748b">
+            <text x={padL} y={H - 6} fontSize="9" fill="#737373">
               {formatDate(points[0].date)}
             </text>
             {points.length > 1 && (
-              <text x={W - padR} y={H - 6} textAnchor="end" fontSize="9" fill="#64748b">
+              <text x={W - padR} y={H - 6} textAnchor="end" fontSize="9" fill="#737373">
                 {formatDate(points[lastIdx].date)}
               </text>
             )}

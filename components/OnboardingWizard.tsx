@@ -51,11 +51,12 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
+      <p className="font-display uppercase tracking-wide text-neutral-500 text-sm mb-6">Train with Dara</p>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-1">
+        <h1 className="text-3xl font-display uppercase tracking-wide text-white mb-1">
           {step === 0 ? 'Welcome 👋' : 'Daily targets'}
         </h1>
-        <p className="text-slate-400">
+        <p className="text-neutral-400">
           {step === 0
             ? "Let's set up your goals — this takes 20 seconds."
             : 'Set the daily numbers you want to hit.'}
@@ -67,7 +68,7 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
         {[0, 1].map(i => (
           <div
             key={i}
-            className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-blue-500' : 'bg-slate-700'}`}
+            className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-white' : 'bg-neutral-700'}`}
           />
         ))}
       </div>
@@ -75,7 +76,7 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
       {step === 0 && (
         <div className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-2">Weight unit</label>
+            <label className="block text-sm font-semibold text-neutral-200 mb-2">Weight unit</label>
             <div className="grid grid-cols-2 gap-2">
               {(['lbs', 'kg'] as const).map(u => (
                 <button
@@ -84,8 +85,8 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
                   onClick={() => setUnit(u)}
                   className={`py-2.5 rounded-lg font-semibold transition border ${
                     unit === u
-                      ? 'bg-blue-600 border-blue-500 text-white'
-                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                      ? 'bg-white border-white text-black'
+                      : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700'
                   }`}
                 >
                   {u === 'lbs' ? 'Pounds (lbs)' : 'Kilograms (kg)'}
@@ -95,7 +96,7 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-2">
+            <label className="block text-sm font-semibold text-neutral-200 mb-2">
               Current weight ({unit})
             </label>
             <input
@@ -105,12 +106,12 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
               value={currentWeight}
               onChange={e => setCurrentWeight(e.target.value)}
               placeholder="0.0"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:border-blue-500 focus:outline-none"
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2.5 text-white focus:border-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-2">
+            <label className="block text-sm font-semibold text-neutral-200 mb-2">
               Goal weight ({unit})
             </label>
             <input
@@ -120,7 +121,7 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
               value={goalWeight}
               onChange={e => setGoalWeight(e.target.value)}
               placeholder="0.0"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:border-blue-500 focus:outline-none"
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2.5 text-white focus:border-white focus:outline-none"
             />
           </div>
 
@@ -128,7 +129,7 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
             type="button"
             onClick={() => setStep(1)}
             disabled={!step1Valid}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-lg transition"
+            className="w-full bg-white hover:bg-neutral-200 disabled:bg-neutral-700 disabled:text-neutral-500 text-black font-bold py-3 rounded-lg transition"
           >
             Next
           </button>
@@ -138,37 +139,37 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
       {step === 1 && (
         <div className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-2">Daily calorie target</label>
+            <label className="block text-sm font-semibold text-neutral-200 mb-2">Daily calorie target</label>
             <input
               type="number"
               inputMode="numeric"
               value={calories}
               onChange={e => setCalories(e.target.value)}
               placeholder="e.g. 2000"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:border-blue-500 focus:outline-none"
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2.5 text-white focus:border-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-2">Daily protein target (g)</label>
+            <label className="block text-sm font-semibold text-neutral-200 mb-2">Daily protein target (g)</label>
             <input
               type="number"
               inputMode="numeric"
               value={protein}
               onChange={e => setProtein(e.target.value)}
               placeholder="e.g. 170"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:border-blue-500 focus:outline-none"
+              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2.5 text-white focus:border-white focus:outline-none"
             />
           </div>
 
           <button
             type="button"
             onClick={suggest}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-blue-300 font-semibold py-2.5 rounded-lg text-sm transition border border-slate-700"
+            className="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold py-2.5 rounded-lg text-sm transition border border-neutral-700"
           >
             ✨ Suggest from my weight
           </button>
-          <p className="text-xs text-slate-500 -mt-2">
+          <p className="text-xs text-neutral-500 -mt-2">
             A rough cut starting point (~12 cal &amp; 1 g protein per lb). Adjust to taste.
           </p>
 
@@ -176,7 +177,7 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
             <button
               type="button"
               onClick={() => setStep(0)}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-lg transition border border-slate-700"
+              className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold py-3 rounded-lg transition border border-neutral-700"
             >
               Back
             </button>
@@ -184,7 +185,7 @@ export default function OnboardingWizard({ initial, saving = false, onFinish }: 
               type="button"
               onClick={finish}
               disabled={!step2Valid || saving}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-lg transition"
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-neutral-700 disabled:text-neutral-500 text-white font-bold py-3 rounded-lg transition"
             >
               {saving ? 'Saving…' : 'Finish'}
             </button>

@@ -105,10 +105,10 @@ export function TrendChart({ points, unit }: { points: Array<{ date: string; val
     <div className="relative">
       {hoverIdx !== null && (
         <div
-          className="absolute -top-1 z-10 -translate-x-1/2 bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-1 text-xs whitespace-nowrap pointer-events-none shadow-lg"
+          className="absolute -top-1 z-10 -translate-x-1/2 bg-neutral-800 border border-neutral-600 rounded-lg px-2.5 py-1 text-xs whitespace-nowrap pointer-events-none shadow-lg"
           style={{ left: `${(x(hoverIdx) / W) * 100}%` }}
         >
-          <span className="text-slate-400">{formatDate(points[hoverIdx].date)} · </span>
+          <span className="text-neutral-400">{formatDate(points[hoverIdx].date)} · </span>
           <span className="font-bold text-white">{points[hoverIdx].value} {unit}</span>
         </div>
       )}
@@ -122,8 +122,8 @@ export function TrendChart({ points, unit }: { points: Array<{ date: string; val
         {/* Recessive grid: min / mid / max, deduped when the range is flat or tiny */}
         {[...new Map([min, (min + max) / 2, max].map(v => [Math.round(v), v])).values()].map((v, i) => (
           <g key={i}>
-            <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke="#1e293b" strokeWidth="1" />
-            <text x={padL - 5} y={y(v) + 3} textAnchor="end" fontSize="9" fill="#64748b">
+            <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke="#262626" strokeWidth="1" />
+            <text x={padL - 5} y={y(v) + 3} textAnchor="end" fontSize="9" fill="#737373">
               {Math.round(v)}
             </text>
           </g>
@@ -136,7 +136,7 @@ export function TrendChart({ points, unit }: { points: Array<{ date: string; val
             x2={x(hoverIdx)}
             y1={padT - 6}
             y2={H - padB}
-            stroke="#475569"
+            stroke="#525252"
             strokeWidth="1"
           />
         )}
@@ -150,7 +150,7 @@ export function TrendChart({ points, unit }: { points: Array<{ date: string; val
             cy={y(p.value)}
             r={i === hoverIdx ? 5 : i === lastIdx ? 4 : 2.5}
             fill="#3b82f6"
-            stroke="#0f172a"
+            stroke="#171717"
             strokeWidth="2"
           />
         ))}
@@ -165,7 +165,7 @@ export function TrendChart({ points, unit }: { points: Array<{ date: string; val
               textAnchor={i === lastIdx && points.length > 1 ? 'end' : 'middle'}
               fontSize="10"
               fontWeight="bold"
-              fill="#cbd5e1"
+              fill="#d4d4d4"
             >
               {points[i].value}
             </text>
@@ -173,11 +173,11 @@ export function TrendChart({ points, unit }: { points: Array<{ date: string; val
         )}
 
         {/* X-axis: first and last date */}
-        <text x={padL} y={H - 6} fontSize="9" fill="#64748b">
+        <text x={padL} y={H - 6} fontSize="9" fill="#737373">
           {formatDate(points[0].date)}
         </text>
         {points.length > 1 && (
-          <text x={W - padR} y={H - 6} textAnchor="end" fontSize="9" fill="#64748b">
+          <text x={W - padR} y={H - 6} textAnchor="end" fontSize="9" fill="#737373">
             {formatDate(points[lastIdx].date)}
           </text>
         )}
@@ -233,12 +233,12 @@ export default function ProgressView({ userId, weightUnit }: { userId: string; w
   )
 
   if (loading) {
-    return <div className="text-center py-8 text-slate-400">Loading...</div>
+    return <div className="text-center py-8 text-neutral-400">Loading...</div>
   }
 
   if (trends.length === 0) {
     return (
-      <p className="text-slate-400 text-center py-8">
+      <p className="text-neutral-400 text-center py-8">
         No logged sets with weight yet — finish a workout and your strength trends will show up here.
       </p>
     )
@@ -259,8 +259,8 @@ export default function ProgressView({ userId, weightUnit }: { userId: string; w
             onClick={() => setMetric(m)}
             className={`py-2 rounded-lg text-sm font-semibold transition border ${
               metric === m
-                ? 'bg-blue-600 border-blue-500 text-white'
-                : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                ? 'bg-white border-white text-black'
+                : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700'
             }`}
           >
             {label}
@@ -272,21 +272,21 @@ export default function ProgressView({ userId, weightUnit }: { userId: string; w
         const latest = t.chartPoints[t.chartPoints.length - 1].value
         const best = Math.max(...t.chartPoints.map(p => p.value))
         return (
-          <div key={t.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+          <div key={t.id} className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
             <div className="flex justify-between items-baseline mb-1">
               <h3 className="font-bold text-lg text-white">{t.name}</h3>
-              <p className="text-xs text-slate-500">{t.points.length} session{t.points.length === 1 ? '' : 's'}</p>
+              <p className="text-xs text-neutral-500">{t.points.length} session{t.points.length === 1 ? '' : 's'}</p>
             </div>
-            <p className="text-sm text-slate-400 mb-3">
-              Latest <span className="font-bold text-slate-200">{latest} {unit}</span>
-              {' · '}All-time best <span className="font-bold text-slate-200">{best} {unit}</span>
+            <p className="text-sm text-neutral-400 mb-3">
+              Latest <span className="font-bold text-neutral-200">{latest} {unit}</span>
+              {' · '}All-time best <span className="font-bold text-neutral-200">{best} {unit}</span>
             </p>
             <TrendChart points={t.chartPoints} unit={unit} />
             <details className="mt-2">
-              <summary className="text-xs text-slate-500 cursor-pointer select-none">View data</summary>
+              <summary className="text-xs text-neutral-500 cursor-pointer select-none">View data</summary>
               <table className="w-full mt-2 text-sm">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500">
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-neutral-500">
                     <th className="py-1 font-semibold">Date</th>
                     <th className="py-1 font-semibold text-right">Best set ({unit})</th>
                     <th className="py-1 font-semibold text-right">Est. 1RM ({unit})</th>
@@ -294,7 +294,7 @@ export default function ProgressView({ userId, weightUnit }: { userId: string; w
                 </thead>
                 <tbody>
                   {[...t.points].reverse().map(p => (
-                    <tr key={p.date} className="border-t border-slate-800 text-slate-300">
+                    <tr key={p.date} className="border-t border-neutral-800 text-neutral-300">
                       <td className="py-1">{formatDate(p.date)}</td>
                       <td className="py-1 text-right font-semibold">{p.best}</td>
                       <td className="py-1 text-right font-semibold">{p.e1rm}</td>

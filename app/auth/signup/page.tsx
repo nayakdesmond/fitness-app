@@ -38,10 +38,11 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="bg-slate-900 rounded-lg p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-        <p className="text-slate-400 mb-6">Join the 8-week cut</p>
+    <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
+      <div className="bg-neutral-900 rounded-lg p-8 w-full max-w-md">
+        <p className="font-display uppercase tracking-wide text-white text-xl leading-none mb-1">Train with Dara</p>
+        <h1 className="text-3xl font-display uppercase tracking-wide text-white mb-2">Create Account</h1>
+        <p className="text-neutral-400 uppercase tracking-widest text-xs mb-8">Hustle for the muscle</p>
         
         {error && <div className="bg-red-500 text-white p-3 rounded mb-4 text-sm">{error}</div>}
         
@@ -53,7 +54,7 @@ export default function Signup() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-neutral-800 border border-neutral-700 rounded px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
               required
             />
           </div>
@@ -64,21 +65,21 @@ export default function Signup() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-neutral-800 border border-neutral-700 rounded px-4 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
               required
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-bold py-2 rounded transition"
+            className="w-full bg-white hover:bg-neutral-200 disabled:bg-neutral-600 text-black font-bold py-2 rounded transition"
           >
             {loading ? "Creating account..." : "Sign Up"}
           </button>
         </form>
 
-        <p className="text-center text-slate-400 mt-6">
-          Already have an account? <Link href="/auth/login" className="text-blue-400 hover:underline">Sign in</Link>
+        <p className="text-center text-neutral-400 mt-6">
+          Already have an account? <Link href="/auth/login" className="text-neutral-300 hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

@@ -62,14 +62,14 @@ export default function ActiveSessionView({
     <div className="max-w-2xl mx-auto px-4 pb-40 space-y-5">
       <div className="flex justify-between items-center pt-2">
         <div>
-          <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1">
+          <p className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1">
             In Progress
           </p>
-          <h1 className="text-2xl font-bold text-white">{session.template_name}</h1>
+          <h1 className="text-2xl font-display uppercase tracking-wide text-white">{session.template_name}</h1>
         </div>
         <button
           onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition text-lg"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white transition text-lg"
           aria-label="Close workout"
         >
           ✕
@@ -80,12 +80,12 @@ export default function ActiveSessionView({
         {exercises.map((exercise) => {
           const lastSets = prevSets[exercise.id]
           return (
-            <div key={exercise.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+            <div key={exercise.id} className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
               <h3 className="font-bold text-lg text-white">{exercise.name}</h3>
 
               {/* Progressive overload hint */}
               {lastSets && lastSets.length > 0 ? (
-                <p className="text-sm text-blue-300 mt-1 mb-4">
+                <p className="text-sm text-neutral-300 mt-1 mb-4">
                   Last time:{' '}
                   <span className="font-semibold">
                     {lastSets
@@ -96,19 +96,19 @@ export default function ActiveSessionView({
                   {' '}— try to beat it 💪
                 </p>
               ) : (
-                <p className="text-sm text-slate-500 mt-1 mb-4">First time logging this — set your baseline</p>
+                <p className="text-sm text-neutral-500 mt-1 mb-4">First time logging this — set your baseline</p>
               )}
 
               <div className="space-y-3">
                 {[1, 2, 3].map((setNum) => (
                   <div key={setNum} className="flex items-center gap-3">
-                    <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700">
-                      <span className="text-sm font-bold text-slate-300">{setNum}</span>
+                    <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-neutral-800 border border-neutral-700">
+                      <span className="text-sm font-bold text-neutral-300">{setNum}</span>
                     </div>
 
                     <div className="flex-1 grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                        <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">
                           Reps
                         </label>
                         <input
@@ -120,11 +120,11 @@ export default function ActiveSessionView({
                             const val = e.target.value
                             if (val) onSaveSet(exercise.id, setNum, { reps: parseInt(val) })
                           }}
-                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-neutral-600 focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                        <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">
                           {weightUnit === 'kg' ? 'Kg' : 'Lbs'}
                         </label>
                         <input
@@ -136,11 +136,11 @@ export default function ActiveSessionView({
                             const val = e.target.value
                             if (val) onSaveSet(exercise.id, setNum, { weight: parseFloat(val) })
                           }}
-                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-2 py-2.5 text-center text-base font-bold text-white placeholder-neutral-600 focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                        <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1">
                           RPE
                         </label>
                         <select
@@ -149,7 +149,7 @@ export default function ActiveSessionView({
                             const val = e.target.value
                             if (val) onSaveSet(exercise.id, setNum, { rpe: parseInt(val) })
                           }}
-                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-1 py-2.5 text-center text-base font-bold text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-1 py-2.5 text-center text-base font-bold text-white focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
                         >
                           <option value="">-</option>
                           {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}

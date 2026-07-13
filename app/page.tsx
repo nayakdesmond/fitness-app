@@ -156,7 +156,7 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-slate-400">Loading...</div>
+    return <div className="text-center py-8 text-neutral-400">Loading...</div>
   }
 
   const unit = settings?.weight_unit || 'lbs'
@@ -186,15 +186,15 @@ export default function Dashboard() {
     <div className="max-w-2xl mx-auto px-4 pb-24 space-y-5">
       {/* Header */}
       <div className="pt-2">
-        <p className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider mb-1">
+        <p className="text-[11px] font-semibold text-neutral-300 uppercase tracking-wider mb-1">
           {formatDateFull(getDateString())}
         </p>
-        <h1 className="text-3xl font-bold text-white">Today</h1>
+        <h1 className="text-3xl font-display uppercase tracking-wide text-white">Today</h1>
       </div>
 
       {/* Today&apos;s Workout */}
-      <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-3">
+      <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+        <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-3">
           Today&apos;s Workout
         </p>
         {todayWorkout ? (
@@ -205,7 +205,7 @@ export default function Dashboard() {
               className={`w-full py-3 rounded-xl font-bold transition ${
                 todayWorkout.completed
                   ? 'bg-green-900/60 text-green-300 border border-green-800'
-                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-900/30'
+                  : 'bg-white text-black hover:bg-neutral-200 shadow-lg shadow-black/40'
               }`}
             >
               {todayWorkout.completed ? '✓ Completed' : 'Log Workout'}
@@ -213,10 +213,10 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-slate-400">No workout logged today</p>
+            <p className="text-neutral-400">No workout logged today</p>
             <button
               onClick={() => router.push('/workouts')}
-              className="w-full py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-lg shadow-blue-900/30"
+              className="w-full py-3 rounded-xl font-bold bg-white text-black hover:bg-neutral-200 transition shadow-lg shadow-black/40"
             >
               Start a Workout
             </button>
@@ -225,8 +225,8 @@ export default function Dashboard() {
       </div>
 
       {/* Quick daily weigh-in */}
-      <form onSubmit={logWeight} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+      <form onSubmit={logWeight} className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+        <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-2">
           {loggedToday ? "Today's Weight — logged, tap to update" : "Log Today's Weight"}
         </p>
         <div className="flex gap-2">
@@ -237,12 +237,12 @@ export default function Dashboard() {
             value={weightInput}
             onChange={(e) => setWeightInput(e.target.value)}
             placeholder={latestWeight !== null ? String(latestWeight) : unit}
-            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+            className="flex-1 bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-neutral-600 focus:border-white focus:outline-none"
           />
           <button
             type="submit"
             disabled={savingWeight}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-bold px-6 rounded-lg transition"
+            className="bg-white hover:bg-neutral-200 disabled:bg-neutral-600 text-black font-bold px-6 rounded-lg transition"
           >
             {savingWeight ? '…' : 'Save'}
           </button>
@@ -252,19 +252,19 @@ export default function Dashboard() {
       {/* Weight & Progress */}
       {latestWeight !== null && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+          <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+            <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5">
               Current Weight
             </p>
             <p className="text-3xl font-bold text-white">
               {latestWeight}
-              <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>
+              <span className="text-sm font-semibold text-neutral-400 ml-1">{unit}</span>
             </p>
             {latestTrend !== null && (
-              <p className="text-xs text-slate-400 mt-1">trend {latestTrend} {unit}</p>
+              <p className="text-xs text-neutral-400 mt-1">trend {latestTrend} {unit}</p>
             )}
           </div>
-          <div className="bg-gradient-to-br from-green-900/50 to-slate-900 rounded-2xl p-4 border border-green-800/40">
+          <div className="bg-gradient-to-br from-green-900/50 to-neutral-900 rounded-2xl p-4 border border-green-800/40">
             <p className="text-[11px] font-semibold text-green-300 uppercase tracking-wide mb-1.5">
               Progress
             </p>
@@ -282,43 +282,43 @@ export default function Dashboard() {
 
       {/* Nutrition */}
       {settings && (
-        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-4">
+        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
+          <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-4">
             Today&apos;s Nutrition
           </p>
           <div className="space-y-5">
             <div>
               <div className="flex justify-between items-baseline mb-2">
-                <p className="text-sm font-semibold text-slate-300">Calories</p>
+                <p className="text-sm font-semibold text-neutral-300">Calories</p>
                 <p className="text-lg font-bold text-white">
                   {todayNutrition.calories}
-                  <span className="text-sm font-semibold text-slate-400"> / {settings.daily_calorie_target}</span>
+                  <span className="text-sm font-semibold text-neutral-400"> / {settings.daily_calorie_target}</span>
                 </p>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-2.5">
+              <div className="w-full bg-neutral-800 rounded-full h-2.5">
                 <div
                   className="bg-blue-500 h-2.5 rounded-full transition-all"
                   style={{ width: `${Math.min(calorieProgress, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-400 mt-1.5">{calorieProgress}% of target</p>
+              <p className="text-xs text-neutral-400 mt-1.5">{calorieProgress}% of target</p>
             </div>
 
             <div>
               <div className="flex justify-between items-baseline mb-2">
-                <p className="text-sm font-semibold text-slate-300">Protein</p>
+                <p className="text-sm font-semibold text-neutral-300">Protein</p>
                 <p className="text-lg font-bold text-white">
                   {todayNutrition.protein}
-                  <span className="text-sm font-semibold text-slate-400"> / {settings.daily_protein_target}g</span>
+                  <span className="text-sm font-semibold text-neutral-400"> / {settings.daily_protein_target}g</span>
                 </p>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-2.5">
+              <div className="w-full bg-neutral-800 rounded-full h-2.5">
                 <div
                   className="bg-red-500 h-2.5 rounded-full transition-all"
                   style={{ width: `${Math.min(proteinProgress, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-400 mt-1.5">{proteinProgress}% of target</p>
+              <p className="text-xs text-neutral-400 mt-1.5">{proteinProgress}% of target</p>
             </div>
           </div>
         </div>
@@ -326,12 +326,12 @@ export default function Dashboard() {
 
       {/* Weight Trend */}
       {weights.length > 1 && (
-        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
           <div className="flex justify-between items-baseline mb-3">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+            <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">
               Weight Trend
             </p>
-            <button onClick={() => router.push('/checkins')} className="text-xs text-blue-400 font-semibold">
+            <button onClick={() => router.push('/checkins')} className="text-xs text-neutral-300 font-semibold">
               View all →
             </button>
           </div>
@@ -343,13 +343,13 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => router.push('/nutrition')}
-          className="bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl text-sm font-bold transition border border-slate-700"
+          className="bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-xl text-sm font-bold transition border border-neutral-700"
         >
           🍎 Log Nutrition
         </button>
         <button
           onClick={() => router.push('/checkins')}
-          className="bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl text-sm font-bold transition border border-slate-700"
+          className="bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-xl text-sm font-bold transition border border-neutral-700"
         >
           ⚖️ Weight Log
         </button>

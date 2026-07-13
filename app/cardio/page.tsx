@@ -107,24 +107,24 @@ export default function Cardio() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-slate-400">Loading...</div>
+    return <div className="text-center py-8 text-neutral-400">Loading...</div>
   }
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
-      <h1 className="text-2xl font-bold text-white pt-2">Cardio</h1>
+      <h1 className="text-2xl font-display uppercase tracking-wide text-white pt-2">Cardio</h1>
 
       {/* Form */}
       {showForm && (
-        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-4">
+        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800 space-y-4">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5">
               Type
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base font-semibold text-white focus:border-blue-500 focus:outline-none"
+              className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-base font-semibold text-white focus:border-white focus:outline-none"
             >
               <option value="running">Running</option>
               <option value="walking">Walking</option>
@@ -137,7 +137,7 @@ export default function Cardio() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5">
               Duration (minutes)
             </label>
             <input
@@ -146,14 +146,14 @@ export default function Cardio() {
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               placeholder="0"
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+              className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-base font-bold text-white placeholder-neutral-600 focus:border-white focus:outline-none"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+              <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5">
                 Distance (km)
               </label>
               <input
@@ -163,11 +163,11 @@ export default function Cardio() {
                 value={distance}
                 onChange={(e) => setDistance(e.target.value)}
                 placeholder="0.0"
-                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-base font-bold text-white placeholder-neutral-600 focus:border-white focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+              <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5">
                 Calories
               </label>
               <input
@@ -176,13 +176,13 @@ export default function Cardio() {
                 value={calories}
                 onChange={(e) => setCalories(e.target.value)}
                 placeholder="0"
-                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-base font-bold text-white placeholder-neutral-600 focus:border-white focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+            <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5">
               Notes
             </label>
             <input
@@ -190,20 +190,20 @@ export default function Cardio() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="How did you feel?"
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+              className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-base text-white placeholder-neutral-500 focus:border-white focus:outline-none"
             />
           </div>
 
           <div className="flex gap-2">
             <button
               onClick={handleSubmit}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition"
+              className="flex-1 bg-white hover:bg-neutral-200 text-black font-bold py-2.5 rounded-lg transition"
             >
               Save
             </button>
             <button
               onClick={() => setShowForm(false)}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-lg transition border border-slate-700"
+              className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold py-2.5 rounded-lg transition border border-neutral-700"
             >
               Cancel
             </button>
@@ -214,7 +214,7 @@ export default function Cardio() {
       {!showForm && (
         <button
           onClick={() => setShowForm(true)}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3.5 rounded-xl transition border border-slate-700"
+          className="w-full bg-neutral-800 hover:bg-neutral-700 text-white font-semibold py-3.5 rounded-xl transition border border-neutral-700"
         >
           + Log Cardio
         </button>
@@ -223,37 +223,37 @@ export default function Cardio() {
       {/* Sessions List */}
       <div className="space-y-3">
         {sessions.length === 0 ? (
-          <p className="text-slate-400 text-center py-8">No cardio sessions yet — log your first one above</p>
+          <p className="text-neutral-400 text-center py-8">No cardio sessions yet — log your first one above</p>
         ) : (
           sessions.map((session) => (
-            <div key={session.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+            <div key={session.id} className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold text-lg text-white capitalize flex items-center gap-2">
                   <span>{CARDIO_ICONS[session.type] || '💪'}</span>
                   {session.type}
                 </h3>
-                <p className="text-sm font-semibold text-slate-400">{formatDate(session.date)}</p>
+                <p className="text-sm font-semibold text-neutral-400">{formatDate(session.date)}</p>
               </div>
               <div className="flex gap-6">
                 <div>
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Time</p>
-                  <p className="text-xl font-bold text-white">{session.duration_mins}<span className="text-sm font-semibold text-slate-400 ml-1">min</span></p>
+                  <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">Time</p>
+                  <p className="text-xl font-bold text-white">{session.duration_mins}<span className="text-sm font-semibold text-neutral-400 ml-1">min</span></p>
                 </div>
                 {session.distance_km && (
                   <div>
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Distance</p>
-                    <p className="text-xl font-bold text-white">{session.distance_km}<span className="text-sm font-semibold text-slate-400 ml-1">km</span></p>
+                    <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">Distance</p>
+                    <p className="text-xl font-bold text-white">{session.distance_km}<span className="text-sm font-semibold text-neutral-400 ml-1">km</span></p>
                   </div>
                 )}
                 {session.calories && (
                   <div>
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Burned</p>
-                    <p className="text-xl font-bold text-white">{session.calories}<span className="text-sm font-semibold text-slate-400 ml-1">cal</span></p>
+                    <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">Burned</p>
+                    <p className="text-xl font-bold text-white">{session.calories}<span className="text-sm font-semibold text-neutral-400 ml-1">cal</span></p>
                   </div>
                 )}
               </div>
               {session.notes && (
-                <p className="text-sm text-slate-300 mt-3 pt-3 border-t border-slate-800">{session.notes}</p>
+                <p className="text-sm text-neutral-300 mt-3 pt-3 border-t border-neutral-800">{session.notes}</p>
               )}
             </div>
           ))

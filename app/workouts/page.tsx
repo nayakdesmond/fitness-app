@@ -445,7 +445,7 @@ function WorkoutsContent() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-slate-400">Loading...</div>
+    return <div className="text-center py-8 text-neutral-400">Loading...</div>
   }
 
   if (activeSession) {
@@ -464,10 +464,10 @@ function WorkoutsContent() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
-      <h1 className="text-2xl font-bold text-white pt-2">Workouts</h1>
+      <h1 className="text-2xl font-display uppercase tracking-wide text-white pt-2">Workouts</h1>
 
       {/* View toggle */}
-      <div className="grid grid-cols-2 gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+      <div className="grid grid-cols-2 gap-1 bg-neutral-900 border border-neutral-800 rounded-xl p-1">
         {(
           [
             ['templates', 'Templates'],
@@ -478,7 +478,7 @@ function WorkoutsContent() {
             key={v}
             onClick={() => setView(v)}
             className={`py-2 rounded-lg text-sm font-semibold transition ${
-              view === v ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+              view === v ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:text-white'
             }`}
           >
             {label}
@@ -493,24 +493,24 @@ function WorkoutsContent() {
       {view === 'templates' && (
         <>
       {showNewTemplate && (
-        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-3">
+        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800 space-y-3">
           <input
             type="text"
             value={newTemplateName}
             onChange={(e) => setNewTemplateName(e.target.value)}
             placeholder="Template name (e.g., Full Body A)"
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+            className="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2.5 text-base text-white placeholder-neutral-500 focus:border-white focus:outline-none"
           />
           <div className="flex gap-2">
             <button
               onClick={createTemplate}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition"
+              className="flex-1 bg-white hover:bg-neutral-200 text-black font-semibold py-2.5 rounded-lg transition"
             >
               Create
             </button>
             <button
               onClick={() => setShowNewTemplate(false)}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-lg transition"
+              className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold py-2.5 rounded-lg transition"
             >
               Cancel
             </button>
@@ -521,7 +521,7 @@ function WorkoutsContent() {
       {!showNewTemplate && (
         <button
           onClick={() => setShowNewTemplate(true)}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3.5 rounded-xl transition border border-slate-700"
+          className="w-full bg-neutral-800 hover:bg-neutral-700 text-white font-semibold py-3.5 rounded-xl transition border border-neutral-700"
         >
           + New Template
         </button>
@@ -552,7 +552,7 @@ function WorkoutsContent() {
 
 export default function Workouts() {
   return (
-    <Suspense fallback={<div className="text-center py-8 text-slate-400">Loading...</div>}>
+    <Suspense fallback={<div className="text-center py-8 text-neutral-400">Loading...</div>}>
       <WorkoutsContent />
     </Suspense>
   )

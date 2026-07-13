@@ -39,12 +39,12 @@ export default function RestTimerBar() {
     <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2">
       <div className="max-w-2xl mx-auto">
         {endsAt !== null ? (
-          <div className="flex items-center justify-between bg-blue-600 rounded-xl px-4 py-3 shadow-lg">
-            <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">Rest</span>
-            <span className="text-2xl font-bold text-white tabular-nums">{formatRestTime(secondsLeft)}</span>
+          <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-lg">
+            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Rest</span>
+            <span className="text-2xl font-bold text-black tabular-nums">{formatRestTime(secondsLeft)}</span>
             <button
               onClick={() => setEndsAt(null)}
-              className="text-sm font-semibold text-blue-100 hover:text-white transition"
+              className="text-sm font-semibold text-neutral-500 hover:text-black transition"
             >
               Skip
             </button>
@@ -57,8 +57,8 @@ export default function RestTimerBar() {
             ✓ Rest done — go!
           </button>
         ) : (
-          <div className="flex items-center gap-2 bg-slate-900/95 backdrop-blur rounded-xl px-3 py-2.5 border border-slate-700 shadow-lg">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Rest</span>
+          <div className="flex items-center gap-2 bg-neutral-900/95 backdrop-blur rounded-xl px-3 py-2.5 border border-neutral-700 shadow-lg">
+            <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider shrink-0">Rest</span>
             {[60, 90, 120, 180].map(secs => (
               <button
                 key={secs}
@@ -66,7 +66,7 @@ export default function RestTimerBar() {
                   setDone(false)
                   setEndsAt(Date.now() + secs * 1000)
                 }}
-                className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg py-1.5 text-sm font-bold text-white transition"
+                className="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-lg py-1.5 text-sm font-bold text-white transition"
               >
                 {formatRestTime(secs)}
               </button>

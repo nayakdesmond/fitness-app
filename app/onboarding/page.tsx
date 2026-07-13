@@ -59,7 +59,7 @@ export default function Onboarding() {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-slate-400">Loading...</div>
+    return <div className="text-center py-8 text-neutral-400">Loading...</div>
   }
 
   return <OnboardingWizard initial={initial} saving={saving} onFinish={handleFinish} />
