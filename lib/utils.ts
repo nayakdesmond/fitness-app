@@ -17,13 +17,3 @@ export function formatDateFull(dateString: string): string {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-export function getWeekStartDate(date?: Date): Date {
-  const d = date ? new Date(date) : new Date()
-  const day = d.getDay()
-  const diff = d.getDate() - day
-  return new Date(d.setDate(diff))
-}
-
-export function getWeekStartDateString(date?: Date): string {
-  return getDateString(getWeekStartDate(date))
-}

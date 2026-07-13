@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { formatDate, formatDateFull, getDateString, type WeightUnit } from '@/lib/utils'
+import { formatDateFull, getDateString, type WeightUnit } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
+import WeightTrendChart, { computeTrend } from '@/components/checkins/WeightTrendChart'
 
 interface UserSettings {
   daily_calorie_target: number
@@ -26,44 +27,21 @@ interface NutritionLog {
   protein: number
 }
 
-function WeightSparkline({ weights }: { weights: number[] }) {
-  if (weights.length < 2) return null
-
-  const w = 300
-  const h = 60
-  const pad = 6
-  const min = Math.min(...weights)
-  const max = Math.max(...weights)
-  const range = max - min || 1
-
-  const points = weights.map((weight, i) => {
-    const x = pad + (i / (weights.length - 1)) * (w - pad * 2)
-    const y = pad + (1 - (weight - min) / range) * (h - pad * 2)
-    return { x, y }
-  })
-
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-  const areaPath = `${linePath} L ${points[points.length - 1].x} ${h} L ${points[0].x} ${h} Z`
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-16" preserveAspectRatio="none">
-      <path d={areaPath} fill="rgb(34 197 94 / 0.15)" />
-      <path d={linePath} fill="none" stroke="rgb(74 222 128)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 4 : 2.5} fill="rgb(74 222 128)" />
-      ))}
-    </svg>
-  )
+interface WeightPoint {
+  date: string
+  weight: number
 }
 
 export default function Dashboard() {
   const router = useRouter()
   const toast = useToast()
+  const [userId, setUserId] = useState<string | null>(null)
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [todayWorkout, setTodayWorkout] = useState<TodayWorkout | null>(null)
   const [todayNutrition, setTodayNutrition] = useState<NutritionLog>({ calories: 0, protein: 0 })
-  const [latestWeight, setLatestWeight] = useState<number | null>(null)
-  const [weeklyWeights, setWeeklyWeights] = useState<Array<{ date: string; weight: number }>>([])
+  const [weights, setWeights] = useState<WeightPoint[]>([]) // ascending by date
+  const [weightInput, setWeightInput] = useState('')
+  const [savingWeight, setSavingWeight] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -77,18 +55,16 @@ export default function Dashboard() {
           return
         }
 
-        // Load user settings
+        setUserId(authUser.id)
+
         const { data: settingsData } = await client
           .from('user_settings')
           .select('*')
           .eq('id', authUser.id)
           .single()
 
-        if (settingsData) {
-          setSettings(settingsData)
-        }
+        if (settingsData) setSettings(settingsData)
 
-        // Load today's workout
         const today = getDateString()
         const { data: sessionsData } = await client
           .from('workout_sessions')
@@ -111,7 +87,6 @@ export default function Dashboard() {
           })
         }
 
-        // Load today's nutrition
         const { data: nutritionData } = await client
           .from('nutrition_logs')
           .select('calories, protein')
@@ -119,26 +94,19 @@ export default function Dashboard() {
           .eq('date', today)
           .single()
 
-        if (nutritionData) {
-          setTodayNutrition(nutritionData)
-        }
+        if (nutritionData) setTodayNutrition(nutritionData)
 
-        // Load latest weights (8 weeks)
-        const { data: checkinsData } = await client
-          .from('weekly_checkins')
-          .select('weight, week_start_date')
+        // Recent daily weights for the trend (most recent 60 days)
+        const { data: weightData } = await client
+          .from('daily_weights')
+          .select('date, weight')
           .eq('user_id', authUser.id)
-          .order('week_start_date', { ascending: false })
-          .limit(8)
+          .order('date', { ascending: false })
+          .limit(60)
 
-        if (checkinsData && checkinsData.length > 0) {
-          setLatestWeight(checkinsData[0].weight)
-          setWeeklyWeights(checkinsData.reverse().map(c => ({
-            date: formatDate(c.week_start_date),
-            weight: c.weight
-          })))
+        if (weightData && weightData.length > 0) {
+          setWeights([...weightData].reverse())
         }
-
       } catch (error) {
         console.error('Error loading dashboard:', error)
         toast('error', 'Could not load your dashboard.')
@@ -149,6 +117,38 @@ export default function Dashboard() {
 
     loadDashboard()
   }, [router, toast])
+
+  const logWeight = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!userId || !weightInput || savingWeight) return
+
+    setSavingWeight(true)
+    try {
+      const client = createClient()
+      const today = getDateString()
+      const value = parseFloat(weightInput)
+
+      const { error } = await client
+        .from('daily_weights')
+        .upsert(
+          [{ user_id: userId, date: today, weight: value }],
+          { onConflict: 'user_id,date' }
+        )
+
+      if (error) throw error
+      setWeights(prev => {
+        const rest = prev.filter(w => w.date !== today)
+        return [...rest, { date: today, weight: value }]
+      })
+      setWeightInput('')
+      toast('success', "Logged today's weight")
+    } catch (error) {
+      console.error('Error logging weight:', error)
+      toast('error', 'Could not save your weight.')
+    } finally {
+      setSavingWeight(false)
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-8 text-slate-400">Loading...</div>
@@ -163,13 +163,18 @@ export default function Dashboard() {
     ? Math.round((todayNutrition.protein / settings.daily_protein_target) * 100)
     : 0
 
+  const latestWeight = weights.length > 0 ? weights[weights.length - 1].weight : null
+  const trend = computeTrend(weights)
+  const latestTrend = trend.length > 0 ? Math.round(trend[trend.length - 1] * 10) / 10 : null
+  const today = getDateString()
+  const loggedToday = weights.some(w => w.date === today)
+
   const startingWeight = settings?.starting_weight ?? 0
-  const weightLost = latestWeight !== null && startingWeight
-    ? (startingWeight - latestWeight)
-    : null
+  // Progress uses the smoothed trend, not a noisy single day
+  const weightLost = latestTrend !== null && startingWeight ? startingWeight - latestTrend : null
   const goalWeight = settings?.goal_weight
-  const goalProgress = goalWeight && latestWeight !== null && startingWeight > goalWeight
-    ? Math.min(Math.max(((startingWeight - latestWeight) / (startingWeight - goalWeight)) * 100, 0), 100)
+  const goalProgress = goalWeight && latestTrend !== null && startingWeight > goalWeight
+    ? Math.min(Math.max(((startingWeight - latestTrend) / (startingWeight - goalWeight)) * 100, 0), 100)
     : null
 
   return (
@@ -214,6 +219,31 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Quick daily weigh-in */}
+      <form onSubmit={logWeight} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+          {loggedToday ? "Today's Weight — logged, tap to update" : "Log Today's Weight"}
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            value={weightInput}
+            onChange={(e) => setWeightInput(e.target.value)}
+            placeholder={latestWeight !== null ? String(latestWeight) : unit}
+            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={savingWeight}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-bold px-6 rounded-lg transition"
+          >
+            {savingWeight ? '…' : 'Save'}
+          </button>
+        </div>
+      </form>
+
       {/* Weight & Progress */}
       {latestWeight !== null && (
         <div className="grid grid-cols-2 gap-3">
@@ -225,8 +255,8 @@ export default function Dashboard() {
               {latestWeight}
               <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>
             </p>
-            {startingWeight > 0 && (
-              <p className="text-xs text-slate-400 mt-1">from {startingWeight} {unit}</p>
+            {latestTrend !== null && (
+              <p className="text-xs text-slate-400 mt-1">trend {latestTrend} {unit}</p>
             )}
           </div>
           <div className="bg-gradient-to-br from-green-900/50 to-slate-900 rounded-2xl p-4 border border-green-800/40">
@@ -289,28 +319,18 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Weekly Weight Trend */}
-      {weeklyWeights.length > 1 && (
+      {/* Weight Trend */}
+      {weights.length > 1 && (
         <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
           <div className="flex justify-between items-baseline mb-3">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
               Weight Trend
             </p>
-            <p className="text-xs text-slate-500">
-              {weeklyWeights[0].date} – {weeklyWeights[weeklyWeights.length - 1].date}
-            </p>
+            <button onClick={() => router.push('/checkins')} className="text-xs text-blue-400 font-semibold">
+              View all →
+            </button>
           </div>
-
-          <WeightSparkline weights={weeklyWeights.map(w => w.weight)} />
-
-          <div className="flex justify-between mt-2">
-            <p className="text-sm font-bold text-slate-300">
-              {weeklyWeights[0].weight} <span className="text-xs font-semibold text-slate-500">{unit}</span>
-            </p>
-            <p className="text-sm font-bold text-green-400">
-              {weeklyWeights[weeklyWeights.length - 1].weight} <span className="text-xs font-semibold text-green-500/70">{unit}</span>
-            </p>
-          </div>
+          <WeightTrendChart points={weights} unit={unit} height={80} showAxes={false} interactive={false} />
         </div>
       )}
 
@@ -326,7 +346,7 @@ export default function Dashboard() {
           onClick={() => router.push('/checkins')}
           className="bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl text-sm font-bold transition border border-slate-700"
         >
-          ⚖️ Weekly Check-in
+          ⚖️ Weight Log
         </button>
       </div>
     </div>

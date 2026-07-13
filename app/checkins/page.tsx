@@ -4,16 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
-import { getWeekStartDateString, formatDate, type WeightUnit } from '@/lib/utils'
+import { getDateString, formatDate, type WeightUnit } from '@/lib/utils'
 import { useToast } from '@/components/Toast'
+import WeightTrendChart, { computeTrend } from '@/components/checkins/WeightTrendChart'
 
-interface WeeklyCheckin {
+interface DailyWeight {
   id: string
-  week_start_date: string
+  date: string
   weight: number
-  waist?: number
-  sleep_quality?: number
-  notes?: string
 }
 
 interface UserSettings {
@@ -24,18 +22,15 @@ interface UserSettings {
 export default function Checkins() {
   const router = useRouter()
   const toast = useToast()
-  const [checkins, setCheckins] = useState<WeeklyCheckin[]>([])
+  const [entries, setEntries] = useState<DailyWeight[]>([]) // newest first
   const [settings, setSettings] = useState<UserSettings | null>(null)
-  const [showForm, setShowForm] = useState(false)
   const [weight, setWeight] = useState('')
-  const [waist, setWaist] = useState('')
-  const [sleepQuality, setSleepQuality] = useState('')
-  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    const loadCheckins = async () => {
+    const load = async () => {
       try {
         const client = createClient()
         const { data: { user: authUser } } = await client.auth.getUser()
@@ -53,61 +48,54 @@ export default function Checkins() {
           .eq('id', authUser.id)
           .single()
 
-        if (settingsData) {
-          setSettings(settingsData)
-        }
+        if (settingsData) setSettings(settingsData)
 
         const { data } = await client
-          .from('weekly_checkins')
+          .from('daily_weights')
           .select('*')
           .eq('user_id', authUser.id)
-          .order('week_start_date', { ascending: false })
+          .order('date', { ascending: false })
 
-        setCheckins(data || [])
+        setEntries(data || [])
       } catch (error) {
-        console.error('Error loading checkins:', error)
-        toast('error', 'Could not load your check-ins.')
+        console.error('Error loading weights:', error)
+        toast('error', 'Could not load your weight history.')
       } finally {
         setLoading(false)
       }
     }
 
-    loadCheckins()
+    load()
   }, [router, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !weight) return
+    if (!user || !weight || saving) return
 
+    setSaving(true)
     try {
       const client = createClient()
-      const weekStart = getWeekStartDateString()
+      const today = getDateString()
 
       const { data, error } = await client
-        .from('weekly_checkins')
-        .upsert([{
-          user_id: user.id,
-          week_start_date: weekStart,
-          weight: parseFloat(weight),
-          waist: waist ? parseFloat(waist) : null,
-          sleep_quality: sleepQuality ? parseInt(sleepQuality) : null,
-          notes: notes || null
-        }])
+        .from('daily_weights')
+        .upsert(
+          [{ user_id: user.id, date: today, weight: parseFloat(weight) }],
+          { onConflict: 'user_id,date' }
+        )
         .select()
 
       if (error) throw error
       if (data) {
-        const updatedCheckins = checkins.filter(c => c.week_start_date !== weekStart)
-        setCheckins([data[0], ...updatedCheckins])
+        setEntries([data[0], ...entries.filter(en => en.date !== today)])
         setWeight('')
-        setWaist('')
-        setSleepQuality('')
-        setNotes('')
-        setShowForm(false)
+        toast('success', "Logged today's weight")
       }
     } catch (error) {
-      console.error('Error saving checkin:', error)
-      toast('error', 'Could not save your check-in.')
+      console.error('Error saving weight:', error)
+      toast('error', 'Could not save your weight.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -116,179 +104,106 @@ export default function Checkins() {
   }
 
   const unit = settings?.weight_unit || 'lbs'
+  const today = getDateString()
+  const loggedToday = entries.some(en => en.date === today)
 
-  const totalLost = settings && checkins.length > 0
-    ? (settings.starting_weight - checkins[0].weight).toFixed(1)
-    : null
+  // Ascending for the chart + trend
+  const ascending = [...entries].reverse()
+  const trend = computeTrend(ascending.map(en => ({ date: en.date, weight: en.weight })))
+  const latestTrend = trend.length > 0 ? Math.round(trend[trend.length - 1] * 10) / 10 : null
+
+  const totalChange =
+    settings && latestTrend !== null ? settings.starting_weight - latestTrend : null
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-24 space-y-4">
-      <h1 className="text-2xl font-bold text-white pt-2">Weekly Check-ins</h1>
+      <h1 className="text-2xl font-bold text-white pt-2">Weight</h1>
 
-      {/* Total progress banner */}
-      {totalLost && parseFloat(totalLost) !== 0 && (
-        <div className="bg-gradient-to-r from-green-900/60 to-slate-900 rounded-2xl p-4 border border-green-800/50 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-green-300 uppercase tracking-wide">Total Progress</p>
-            <p className="text-3xl font-bold text-white">
-              {Math.abs(parseFloat(totalLost))}
-              <span className="text-base font-semibold text-slate-300 ml-1.5">
-                {unit} {parseFloat(totalLost) > 0 ? 'lost' : 'gained'}
-              </span>
-            </p>
-          </div>
-          <span className="text-3xl">{parseFloat(totalLost) > 0 ? '🔥' : '📈'}</span>
+      {/* Quick daily weigh-in */}
+      <form onSubmit={handleSubmit} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+          {loggedToday ? "Update Today's Weight" : "Log Today's Weight"}
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder={unit}
+            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+            required
+          />
+          <button
+            type="submit"
+            disabled={saving}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-bold px-6 rounded-lg transition"
+          >
+            {saving ? '…' : loggedToday ? 'Update' : 'Save'}
+          </button>
         </div>
-      )}
+      </form>
 
-      {/* Form */}
-      {showForm && (
-        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+      {/* Trend summary + chart */}
+      {ascending.length > 0 && (
+        <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+          <div className="flex justify-between items-baseline mb-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                Weight ({unit})
-              </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.1"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                placeholder="0.0"
-                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
-                required
-              />
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Trend Weight</p>
+              <p className="text-3xl font-bold text-white">
+                {latestTrend}
+                <span className="text-base font-semibold text-slate-400 ml-1">{unit}</span>
+              </p>
             </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                Waist (inches)
-              </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.1"
-                value={waist}
-                onChange={(e) => setWaist(e.target.value)}
-                placeholder="0.0"
-                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-center text-lg font-bold text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-              Sleep Quality (1-10)
-            </label>
-            <select
-              value={sleepQuality}
-              onChange={(e) => setSleepQuality(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base font-semibold text-white focus:border-blue-500 focus:outline-none"
-            >
-              <option value="">Select...</option>
-              {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-              Notes
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="How did the week go?"
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 text-base text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleSubmit}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => setShowForm(false)}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-lg transition border border-slate-700"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3.5 rounded-xl transition border border-slate-700"
-        >
-          + New Check-in
-        </button>
-      )}
-
-      {/* Checkins List */}
-      <div className="space-y-3">
-        {checkins.length === 0 ? (
-          <p className="text-slate-400 text-center py-8">No check-ins yet — log your first weigh-in above</p>
-        ) : (
-          checkins.map((checkin, index) => {
-            const prevCheckin = checkins[index + 1]
-            const weightChange = prevCheckin ? (checkin.weight - prevCheckin.weight).toFixed(1) : null
-            const waistChange = prevCheckin && checkin.waist && prevCheckin.waist
-              ? (checkin.waist - prevCheckin.waist).toFixed(1)
-              : null
-
-            return (
-              <div key={checkin.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
-                <p className="text-sm font-bold text-white mb-3">
-                  Week of {formatDate(checkin.week_start_date)}
+            {totalChange !== null && Math.abs(totalChange) >= 0.1 && (
+              <div className="text-right">
+                <p className="text-[11px] font-semibold text-green-300 uppercase tracking-wide">
+                  Total {totalChange > 0 ? 'Lost' : 'Gained'}
                 </p>
+                <p className="text-2xl font-bold text-green-400">
+                  {Math.abs(totalChange).toFixed(1)}
+                  <span className="text-sm font-semibold text-green-300/70 ml-1">{unit}</span>
+                </p>
+              </div>
+            )}
+          </div>
 
-                <div className="flex gap-6 mb-1">
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Weight</p>
-                    <p className="text-xl font-bold text-white">
-                      {checkin.weight}
-                      <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>
-                      {weightChange && parseFloat(weightChange) !== 0 && (
-                        <span className={`text-sm font-bold ml-2 ${parseFloat(weightChange) < 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {parseFloat(weightChange) < 0 ? '↓' : '↑'} {Math.abs(parseFloat(weightChange))}
-                        </span>
-                      )}
-                    </p>
-                  </div>
+          <WeightTrendChart
+            points={ascending.map(en => ({ date: en.date, weight: en.weight }))}
+            unit={unit}
+          />
+          <p className="text-[11px] text-slate-500 mt-1.5 text-center">
+            Faint dots are daily weigh-ins · the line is a smoothed 7-day trend
+          </p>
+        </div>
+      )}
 
-                  {checkin.waist && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Waist</p>
-                      <p className="text-xl font-bold text-white">
-                        {checkin.waist}
-                        <span className="text-sm font-semibold text-slate-400 ml-1">in</span>
-                        {waistChange && parseFloat(waistChange) !== 0 && (
-                          <span className={`text-sm font-bold ml-2 ${parseFloat(waistChange) < 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {parseFloat(waistChange) < 0 ? '↓' : '↑'} {Math.abs(parseFloat(waistChange))}
-                          </span>
-                        )}
-                      </p>
-                    </div>
+      {/* Entry list */}
+      <div className="space-y-2">
+        {entries.length === 0 ? (
+          <p className="text-slate-400 text-center py-8">No weigh-ins yet — log your weight above</p>
+        ) : (
+          entries.map((en, index) => {
+            const prev = entries[index + 1] // older
+            const change = prev ? Number((en.weight - prev.weight).toFixed(1)) : null
+            return (
+              <div
+                key={en.id}
+                className="bg-slate-900 rounded-xl px-4 py-3 border border-slate-800 flex items-center justify-between"
+              >
+                <p className="text-sm font-semibold text-slate-300">
+                  {en.date === today ? 'Today' : formatDate(en.date)}
+                </p>
+                <p className="text-lg font-bold text-white">
+                  {en.weight}
+                  <span className="text-sm font-semibold text-slate-400 ml-1">{unit}</span>
+                  {change !== null && change !== 0 && (
+                    <span className={`text-sm font-bold ml-2 ${change < 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {change < 0 ? '↓' : '↑'} {Math.abs(change)}
+                    </span>
                   )}
-
-                  {checkin.sleep_quality && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Sleep</p>
-                      <p className="text-xl font-bold text-white">
-                        {checkin.sleep_quality}<span className="text-sm font-semibold text-slate-400">/10</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {checkin.notes && (
-                  <p className="text-sm text-slate-300 mt-3 pt-3 border-t border-slate-800">{checkin.notes}</p>
-                )}
+                </p>
               </div>
             )
           })
